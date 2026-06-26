@@ -1,0 +1,18 @@
+{
+  "name": "Emboobate",
+  "short_name": "Emboobate",
+  "description": "Programación de entregas Emboobate",
+  "start_url": "./embobate.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F3EF",
+  "theme_color": "#FB7200",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

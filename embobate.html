@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Embobaté - Programación de entregas</title>
+<title>Emboobate - Programación de entregas</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#FB7200">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/tabler-icons.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -153,7 +157,7 @@
     <div class="logo" style="width:48px;height:48px;border-radius:12px;background:#FB7200;display:flex;align-items:center;justify-content:center;">
       <i class="ti ti-droplet-filled" style="font-size:24px;color:#fff;" aria-hidden="true"></i>
     </div>
-    <h2>Embobaté</h2>
+    <h2>Emboobate</h2>
     <p>Ingresa el código de acceso</p>
     <input type="password" id="gate-code" placeholder="Código" autocomplete="off" onkeydown="if(event.key==='Enter') checkAccessCode()">
     <div class="gate-error" id="gate-error"></div>
@@ -168,7 +172,7 @@
     <div class="brand">
       <div class="logo"><i class="ti ti-droplet-filled" aria-hidden="true"></i></div>
       <div>
-        <div class="brand-title">Embobaté</div>
+        <div class="brand-title">Emboobate</div>
         <div class="brand-sub">Programación de entregas</div>
       </div>
     </div>
@@ -307,7 +311,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, getDoc, setDoc
+  onSnapshot, getDoc, setDoc, enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -321,6 +325,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+enableIndexedDbPersistence(db).catch((err)=>{
+  console.warn('Persistencia offline no disponible:', err.code);
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch((err)=>console.warn('SW error:', err));
+}
 
 const ordersCol = collection(db, "orders");
 const clientsCol = collection(db, "clients");
