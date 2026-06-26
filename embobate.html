@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embobaté - Programación de entregas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #F4F3EF;
+    color: #1A1A18;
+    padding: 24px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 44px; height: 44px; border-radius: 12px; background: #FB7200; display: flex; align-items: center; justify-content: center; }
+  .logo i { font-size: 22px; color: #fff; }
+  .brand-title { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-sub { font-size: 13px; font-weight: 600; color: #6B6A65; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid #DCDAD2; background: #fff; color: #1A1A18; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .btn:hover { background: #EFEEE8; border-color: #C5C3BA; }
+  .btn-primary { background: #FB7200; color: #fff; border-color: #FB7200; }
+  .btn-primary:hover { background: #e56800; border-color: #e56800; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat { background: #EFEEE8; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; }
+  .stat-label { font-size: 12px; font-weight: 700; color: #6B6A65; }
+  .stat-icon { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .stat-val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .section-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; background: #EFEEE8; padding: 4px; border-radius: 12px; }
+  .tab { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; background: transparent; color: #6B6A65; transition: all 0.15s; }
+  .tab.active { background: #fff; color: #1A1A18; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+  .table-card { background: #fff; border: 1px solid #E5E3DB; border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
+  th { padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #6B6A65; background: #F7F6F2; border-bottom: 1px solid #E5E3DB; white-space: nowrap; }
+  td { padding: 12px 14px; border-bottom: 1px solid #EFEEE8; color: #1A1A18; font-weight: 600; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover td { background: #FAF9F5; }
+
+  .client-cell { display: flex; flex-direction: column; gap: 2px; }
+  .client-name { font-weight: 700; }
+  .client-phone { font-size: 12px; color: #185FA5; font-weight: 600; text-decoration: none; }
+  .client-phone:hover { text-decoration: underline; }
+  .no-phone { font-size: 12px; color: #9C9A91; font-weight: 600; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .badge-pendiente { background: #FAEEDA; color: #854F0B; }
+  .badge-entregado { background: #EAF3DE; color: #3B6D11; }
+  .badge-enruta { background: #E6F1FB; color: #185FA5; }
+  .badge-cambio { background: #FAECE7; color: #993C1D; }
+
+  .flavor-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .fpill { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .fpill.pina { background: #FAEEDA; color: #854F0B; }
+  .fpill.jamaica { background: #FBEAF0; color: #993556; }
+  .fpill.horchata { background: #EAF3DE; color: #3B6D11; }
+  .fpill.taro { background: #EEEDFE; color: #534AB7; }
+  .fpill.chai { background: #FAEEDA; color: #633806; }
+  .fpill.otro { background: #F1EFE8; color: #5F5E5A; }
+
+  .total-pzas { font-weight: 700; font-size: 14px; }
+  .alert-date { color: #C0392B; font-weight: 700; }
+  .ok-date { color: #1A1A18; font-weight: 600; }
+
+  .row-actions { display: flex; gap: 2px; white-space: nowrap; }
+  .icon-btn { background: none; border: none; cursor: pointer; color: #6B6A65; font-size: 16px; padding: 6px; border-radius: 8px; transition: all 0.12s; display: flex; align-items: center; }
+  .icon-btn:hover { background: #EFEEE8; color: #1A1A18; }
+  .icon-btn.danger:hover { color: #C0392B; }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: #6B6A65; }
+  .empty-state i { font-size: 28px; display: block; margin: 0 auto 10px; color: #B5B3AA; }
+  .empty-state p { font-size: 13px; font-weight: 600; }
+
+  .days-pill { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot-urgente { background: #C0392B; }
+  .dot-proximo { background: #BA7517; }
+  .dot-ok { background: #3B6D11; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: flex-start; justify-content: center; z-index: 100; padding: 2rem 1rem; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; border: 1px solid #E5E3DB; padding: 1.5rem; width: 100%; max-width: 560px; }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 1.4rem; display: flex; align-items: center; gap: 9px; }
+  .modal-title i { font-size: 19px; color: #FB7200; }
+  .form-section { margin-bottom: 1.4rem; }
+  .form-section-label { font-size: 11px; font-weight: 700; color: #6B6A65; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #EFEEE8; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .form-label { font-size: 12px; font-weight: 700; color: #6B6A65; }
+  .form-input, .form-select { width: 100%; padding: 9px 11px; border: 1px solid #DCDAD2; border-radius: 8px; font-size: 13px; font-weight: 600; background: #fff; color: #1A1A18; }
+  .form-input:focus, .form-select:focus { outline: none; border-color: #FB7200; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
+
+  .client-dropdown-wrap { position: relative; }
+  .client-input-row { display: flex; align-items: center; border: 1px solid #DCDAD2; border-radius: 8px; background: #fff; overflow: hidden; }
+  .client-input-row:focus-within { border-color: #FB7200; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
+  .client-text-input { flex: 1; padding: 9px 11px; border: none; background: transparent; font-size: 13px; font-weight: 600; color: #1A1A18; outline: none; min-width: 0; }
+  .client-toggle { padding: 9px 11px; background: transparent; border: none; border-left: 1px solid #EFEEE8; cursor: pointer; color: #6B6A65; display: flex; align-items: center; }
+  .client-toggle:hover { background: #EFEEE8; }
+  .client-list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #DCDAD2; border-radius: 8px; z-index: 200; max-height: 190px; overflow-y: auto; display: none; box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+  .client-list.open { display: block; }
+  .client-option { padding: 10px 12px; font-size: 13px; font-weight: 600; cursor: pointer; color: #1A1A18; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #EFEEE8; }
+  .client-option:last-child { border-bottom: none; }
+  .client-option:hover { background: #EFEEE8; }
+  .client-option.new-opt { color: #FB7200; font-weight: 700; }
+
+  .flavor-check { display: flex; flex-wrap: wrap; gap: 8px; }
+  .flavor-opt { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; cursor: pointer; padding: 7px 14px; border: 1px solid #DCDAD2; border-radius: 20px; transition: all 0.15s; color: #6B6A65; user-select: none; }
+  .flavor-opt:hover { border-color: #B5B3AA; }
+  .flavor-opt.checked { background: #FB7200; color: #fff; border-color: #FB7200; }
+  .qty-row { display: flex; align-items: center; gap: 8px; background: #EFEEE8; padding: 5px 8px 5px 12px; border-radius: 20px; }
+  .qty-input { width: 56px; padding: 5px 6px; border: 1px solid #DCDAD2; border-radius: 8px; font-size: 13px; font-weight: 700; background: #fff; color: #1A1A18; text-align: center; }
+  .qty-input:focus { outline: none; border-color: #FB7200; }
+  .qty-label { font-size: 12px; font-weight: 700; }
+
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.6rem; border-top: 1px solid #EFEEE8; padding-top: 1.1rem; }
+
+  .gate-overlay { position: fixed; inset: 0; background: #F4F3EF; display: flex; align-items: center; justify-content: center; z-index: 999; padding: 1rem; }
+  .gate-card { background: #fff; border: 1px solid #E5E3DB; border-radius: 14px; padding: 2rem; width: 100%; max-width: 360px; text-align: center; }
+  .gate-card .logo { margin: 0 auto 14px; }
+  .gate-card h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .gate-card p { font-size: 13px; color: #6B6A65; font-weight: 600; margin-bottom: 18px; }
+  .gate-card input { width: 100%; padding: 11px; border: 1px solid #DCDAD2; border-radius: 8px; font-size: 15px; text-align: center; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 10px; }
+  .gate-card input:focus { outline: none; border-color: #FB7200; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
+  .gate-error { color: #C0392B; font-size: 12px; font-weight: 700; margin-bottom: 10px; min-height: 16px; }
+  .gate-card .btn-primary { width: 100%; justify-content: center; padding: 11px; }
+  .conn-pill { position: fixed; bottom: 14px; right: 14px; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; z-index: 50; }
+  .conn-ok { background: #EAF3DE; color: #3B6D11; }
+  .conn-bad { background: #FAECE7; color: #993C1D; }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    body { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="gate-overlay" id="gate-overlay">
+  <div class="gate-card">
+    <div class="logo" style="width:48px;height:48px;border-radius:12px;background:#FB7200;display:flex;align-items:center;justify-content:center;">
+      <i class="ti ti-droplet-filled" style="font-size:24px;color:#fff;" aria-hidden="true"></i>
+    </div>
+    <h2>Embobaté</h2>
+    <p>Ingresa el código de acceso</p>
+    <input type="password" id="gate-code" placeholder="Código" autocomplete="off" onkeydown="if(event.key==='Enter') checkAccessCode()">
+    <div class="gate-error" id="gate-error"></div>
+    <button class="btn btn-primary" onclick="checkAccessCode()">Entrar</button>
+  </div>
+</div>
+
+<div class="conn-pill conn-bad" id="conn-pill" style="display:none;"><i class="ti ti-plug-connected-x" aria-hidden="true"></i> Sin conexión a la base de datos</div>
+
+<div class="container" id="app-container" style="display:none;">
+  <div class="header">
+    <div class="brand">
+      <div class="logo"><i class="ti ti-droplet-filled" aria-hidden="true"></i></div>
+      <div>
+        <div class="brand-title">Embobaté</div>
+        <div class="brand-sub">Programación de entregas</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> Exportar</button>
+      <button class="btn btn-primary" onclick="openModal()"><i class="ti ti-plus" aria-hidden="true"></i> Nuevo pedido</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-truck-delivery" style="font-size:18px;color:#FB7200;" aria-hidden="true"></i> Pedidos</div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" onclick="setTab('todos',this)">Todos</button>
+      <button class="tab" onclick="setTab('pendiente',this)">Pendiente</button>
+      <button class="tab" onclick="setTab('en ruta',this)">En ruta</button>
+      <button class="tab" onclick="setTab('entregado',this)">Entregado</button>
+      <button class="tab" onclick="setTab('cambio',this)">Por caducar</button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Fecha pedido</th>
+            <th>Sabores y piezas</th>
+            <th>Total</th>
+            <th>Estatus</th>
+            <th>Elaboración</th>
+            <th>Cambio antes de</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-alert-triangle" style="color:#BA7517;font-size:18px;" aria-hidden="true"></i> Monitor de caducidad</div>
+  </div>
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Sabor</th>
+            <th>Piezas</th>
+            <th>Elaboración</th>
+            <th>Cambio antes de</th>
+            <th>Días restantes</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="cad-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-clipboard-list" aria-hidden="true"></i> <span id="modal-title-text">Nuevo pedido</span></div>
+
+    <div class="form-section">
+      <div class="form-section-label">Datos del cliente</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">Cliente</label>
+          <div class="client-dropdown-wrap" id="client-wrap">
+            <div class="client-input-row">
+              <input class="client-text-input" id="f-cliente-text" placeholder="Buscar o escribir cliente..." autocomplete="off" oninput="filterClients()" onfocus="openClientList()">
+              <button class="client-toggle" onclick="toggleClientList()" type="button" aria-label="Mostrar lista de clientes"><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+            </div>
+            <div class="client-list" id="client-list"></div>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Teléfono de contacto</label>
+          <input class="form-input" id="f-telefono" type="tel" placeholder="Ej. 492 123 4567">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-label">Detalles del pedido</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">Fecha de pedido</label>
+          <input class="form-input" type="date" id="f-fecha-pedido">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Estatus de entrega</label>
+          <select class="form-select" id="f-estatus">
+            <option value="pendiente">Pendiente</option>
+            <option value="en ruta">En ruta</option>
+            <option value="entregado">Entregado</option>
+            <option value="cambio">Por caducar / cambio</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field" style="margin-top:12px;">
+        <label class="form-label">Sabores</label>
+        <div class="flavor-check" id="flavor-checks"></div>
+        <div id="qty-inputs" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;"></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-label">Control de caducidad</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">Fecha de elaboración</label>
+          <input class="form-input" type="date" id="f-elab">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Cambio antes de</label>
+          <input class="form-input" type="date" id="f-cambio">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveOrder()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar pedido</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
+  onSnapshot, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCjFyxrJsrcJx5QmHaL0p_eQaSB83PpaS4",
+  authDomain: "emboobate-cd9c1.firebaseapp.com",
+  projectId: "emboobate-cd9c1",
+  storageBucket: "emboobate-cd9c1.firebasestorage.app",
+  messagingSenderId: "572353552640",
+  appId: "1:572353552640:web:4704ef080c381b6ec7d3e5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const ordersCol = collection(db, "orders");
+const clientsCol = collection(db, "clients");
+const accessDocRef = doc(db, "config", "access");
+
+window.FLAVORS = ['Piña','Jamaica','Horchata','Taro','Chai','Otro'];
+window.FLAVOR_CLASS = {Piña:'pina',Jamaica:'jamaica',Horchata:'horchata',Taro:'taro',Chai:'chai',Otro:'otro'};
+
+window.orders = [];
+window.clients = [];
+let currentTab = 'todos';
+let editId = null;
+let selectedFlavors = new Set();
+let clientListOpen = false;
+
+function setConn(ok){
+  const pill=document.getElementById('conn-pill');
+  pill.style.display = ok ? 'none' : 'flex';
+}
+
+onSnapshot(ordersCol, (snap)=>{
+  window.orders = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  setConn(true);
+  render();
+}, (err)=>{ console.error(err); setConn(false); });
+
+onSnapshot(clientsCol, (snap)=>{
+  window.clients = snap.docs.map(d=>({id:d.id, ...d.data()}));
+}, (err)=>{ console.error(err); setConn(false); });
+
+async function checkAccessCode(){
+  const input = document.getElementById('gate-code').value.trim();
+  const errEl = document.getElementById('gate-error');
+  errEl.textContent = '';
+  if(!input){ errEl.textContent = 'Escribe el código.'; return; }
+  try{
+    let snap = await getDoc(accessDocRef);
+    if(!snap.exists()){
+      await setDoc(accessDocRef, { code: input });
+      grantAccess(input);
+      return;
+    }
+    const data = snap.data();
+    if(data.code === input){
+      grantAccess(input);
+    } else {
+      errEl.textContent = 'Código incorrecto.';
+    }
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Error de conexión. Revisa internet.';
+  }
+}
+function grantAccess(code){
+  localStorage.setItem('embobate_access_code', code);
+  document.getElementById('gate-overlay').style.display='none';
+  document.getElementById('app-container').style.display='block';
+}
+window.checkAccessCode = checkAccessCode;
+
+(function tryAutoLogin(){
+  const saved = localStorage.getItem('embobate_access_code');
+  if(saved){
+    getDoc(accessDocRef).then(snap=>{
+      if(snap.exists() && snap.data().code === saved){
+        grantAccess(saved);
+      }
+    }).catch(()=>{});
+  }
+})();
+
+function persistOrderNew(o){ return addDoc(ordersCol, o); }
+function persistOrderUpdate(id, o){ return updateDoc(doc(db,"orders",id), o); }
+function persistOrderDelete(id){ return deleteDoc(doc(db,"orders",id)); }
+function persistClientNew(c){ return addDoc(clientsCol, c); }
+function persistClientUpdate(id, c){ return updateDoc(doc(db,"clients",id), c); }
+
+function totalPzas(s){ return Object.values(s).reduce((a,b)=>a+b,0); }
+function fmtDate(s){ if(!s) return '—'; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
+function daysLeft(s){ if(!s) return null; const now=new Date(); now.setHours(0,0,0,0); const [y,m,d]=s.split('-').map(Number); const dd=new Date(y,m-1,d); dd.setHours(0,0,0,0); return Math.round((dd-now)/86400000); }
+
+function statusBadge(s){
+  const map={pendiente:'badge-pendiente',entregado:'badge-entregado','en ruta':'badge-enruta',cambio:'badge-cambio'};
+  const label={pendiente:'Pendiente',entregado:'Entregado','en ruta':'En ruta',cambio:'Por caducar'};
+  const icon={pendiente:'ti-clock',entregado:'ti-check','en ruta':'ti-truck',cambio:'ti-alert-triangle'};
+  return `<span class="badge ${map[s]}"><i class="ti ${icon[s]||'ti-circle'}" style="font-size:12px;" aria-hidden="true"></i>${label[s]||s}</span>`;
+}
+
+function renderStats(){
+  const total=orders.length, pendientes=orders.filter(o=>o.estatus==='pendiente').length,
+    enRuta=orders.filter(o=>o.estatus==='en ruta').length,
+    porCaducar=orders.filter(o=>{ const dl=daysLeft(o.cambio); return dl!==null&&dl<=3&&o.estatus!=='entregado'; }).length;
+  const data=[
+    {label:'Total pedidos',val:total,icon:'ti-clipboard-list',bg:'#E6F1FB',col:'#185FA5'},
+    {label:'Pendientes',val:pendientes,icon:'ti-clock',bg:'#FAEEDA',col:'#854F0B'},
+    {label:'En ruta',val:enRuta,icon:'ti-truck',bg:'#E6F1FB',col:'#185FA5'},
+    {label:'Por caducar',val:porCaducar,icon:'ti-alert-triangle',bg:'#FAECE7',col:'#993C1D'},
+  ];
+  document.getElementById('stats').innerHTML=data.map(d=>`
+    <div class="stat">
+      <div class="stat-top">
+        <span class="stat-label">${d.label}</span>
+        <span class="stat-icon" style="background:${d.bg};color:${d.col};"><i class="ti ${d.icon}" aria-hidden="true"></i></span>
+      </div>
+      <span class="stat-val">${d.val}</span>
+    </div>`).join('');
+}
+
+function renderTable(){
+  const filtered=currentTab==='todos'?orders:orders.filter(o=>o.estatus===currentTab);
+  const tbody=document.getElementById('tbody');
+  if(!filtered.length){
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><i class="ti ti-inbox" aria-hidden="true"></i><p>Sin pedidos en esta categoría</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=filtered.map(o=>{
+    const dl=daysLeft(o.cambio);
+    const isUrgent=dl!==null&&dl<=3&&o.estatus!=='entregado';
+    const cc=isUrgent?'alert-date':'ok-date';
+    const pills=Object.entries(o.sabores).map(([f,q])=>`<span class="fpill ${FLAVOR_CLASS[f]||''}">${f} ${q}</span>`).join('');
+    const tel=o.telefono?`<a class="client-phone" href="tel:${o.telefono}"><i class="ti ti-phone" style="font-size:11px;vertical-align:-1px;" aria-hidden="true"></i> ${o.telefono}</a>`:`<span class="no-phone">Sin teléfono</span>`;
+    const cambioLabel=fmtDate(o.cambio)+(dl===0?' · hoy':dl<0&&dl!==null?' · vencido':isUrgent?' · urgente':'');
+    return `<tr>
+      <td><div class="client-cell"><span class="client-name">${o.cliente}</span>${tel}</div></td>
+      <td>${fmtDate(o.fecha)}</td>
+      <td><div class="flavor-pills">${pills}</div></td>
+      <td><span class="total-pzas">${totalPzas(o.sabores)}</span></td>
+      <td>${statusBadge(o.estatus)}</td>
+      <td>${fmtDate(o.elab)}</td>
+      <td class="${cc}">${cambioLabel}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" onclick="openEdit('${o.id}')" title="Editar" aria-label="Editar pedido"><i class="ti ti-edit" aria-hidden="true"></i></button>
+          <button class="icon-btn danger" onclick="deleteOrder('${o.id}')" title="Eliminar" aria-label="Eliminar pedido"><i class="ti ti-trash" aria-hidden="true"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCaducidad(){
+  const rows=[];
+  orders.forEach(o=>{
+    if(o.estatus==='entregado') return;
+    Object.entries(o.sabores).forEach(([f,q])=>{
+      if(!o.cambio) return;
+      const dl=daysLeft(o.cambio);
+      let cls='ok',estado='Correcto';
+      if(dl!==null&&dl<0){cls='urgente';estado='Vencido';}
+      else if(dl!==null&&dl<=3){cls='urgente';estado='Urgente';}
+      else if(dl!==null&&dl<=7){cls='proximo';estado='Próximo';}
+      rows.push({cliente:o.cliente,sabor:f,qty:q,elab:o.elab,cambio:o.cambio,dl,cls,estado});
+    });
+  });
+  rows.sort((a,b)=>(a.dl??999)-(b.dl??999));
+  const tbody=document.getElementById('cad-tbody');
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><i class="ti ti-calendar-check" aria-hidden="true"></i><p>Sin datos de caducidad registrados</p></div></td></tr>`;
+    return;
+  }
+  const badgeMap={urgente:'badge-cambio',proximo:'badge-pendiente',ok:'badge-entregado'};
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td style="font-weight:700;">${r.cliente}</td>
+    <td><span class="fpill ${FLAVOR_CLASS[r.sabor]||''}">${r.sabor}</span></td>
+    <td>${r.qty}</td>
+    <td>${fmtDate(r.elab)}</td>
+    <td>${fmtDate(r.cambio)}</td>
+    <td><span class="days-pill"><span class="dot dot-${r.cls}"></span>${r.dl!==null?(r.dl<0?Math.abs(r.dl)+'d vencido':r.dl===0?'Hoy':r.dl+'d'):'—'}</span></td>
+    <td><span class="badge ${badgeMap[r.cls]}">${r.estado}</span></td>
+  </tr>`).join('');
+}
+
+function render(){ renderStats(); renderTable(); renderCaducidad(); }
+window.setTab=function(tab,el){ currentTab=tab; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderTable(); };
+
+function buildClientList(filter=''){
+  const list=document.getElementById('client-list');
+  const q=filter.trim().toUpperCase();
+  const filtered=clients.filter(c=>!q||c.name.includes(q));
+  let html=filtered.map(c=>`<div class="client-option" onclick="selectClient('${c.name.replace(/'/g,"\\'")}','${(c.phone||'').replace(/'/g,"\\'")}')"><i class="ti ti-user" style="font-size:14px;color:#6B6A65;" aria-hidden="true"></i>${c.name}</div>`).join('');
+  if(q&&!clients.some(c=>c.name===q)){
+    html+=`<div class="client-option new-opt" onclick="selectClient('${q.replace(/'/g,"\\'")}','')"><i class="ti ti-plus" style="font-size:14px;" aria-hidden="true"></i>Agregar "${q}" como nuevo cliente</div>`;
+  }
+  list.innerHTML=html||`<div class="client-option" style="color:#6B6A65;">Sin resultados</div>`;
+}
+
+window.openClientList=function(){ clientListOpen=true; buildClientList(document.getElementById('f-cliente-text').value); document.getElementById('client-list').classList.add('open'); };
+window.closeClientList=function(){ clientListOpen=false; document.getElementById('client-list').classList.remove('open'); };
+window.toggleClientList=function(){ if(clientListOpen) closeClientList(); else openClientList(); };
+window.filterClients=function(){ buildClientList(document.getElementById('f-cliente-text').value); if(!clientListOpen) openClientList(); };
+window.selectClient=function(name, phone){ document.getElementById('f-cliente-text').value=name; if(phone) document.getElementById('f-telefono').value=phone; closeClientList(); };
+
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('client-wrap');
+  if(wrap && !wrap.contains(e.target)) closeClientList();
+});
+
+function buildFlavorChecks(){
+  document.getElementById('flavor-checks').innerHTML=FLAVORS.map(f=>`<div class="flavor-opt${selectedFlavors.has(f)?' checked':''}" onclick="toggleFlavor('${f}')">${f}</div>`).join('');
+  buildQtyInputs();
+}
+window.toggleFlavor=function(f){ if(selectedFlavors.has(f)) selectedFlavors.delete(f); else selectedFlavors.add(f); buildFlavorChecks(); };
+function buildQtyInputs(){
+  const prev={};
+  document.querySelectorAll('.qty-input').forEach(el=>{ prev[el.dataset.f]=el.value; });
+  document.getElementById('qty-inputs').innerHTML=[...selectedFlavors].map(f=>`
+    <div class="qty-row">
+      <span class="qty-label">${f}</span>
+      <input class="qty-input" type="number" min="1" data-f="${f}" id="qty-${f}" placeholder="0" value="${prev[f]||''}">
+    </div>`).join('');
+}
+
+window.openModal=function(id=null){
+  editId=id; selectedFlavors=new Set();
+  document.getElementById('modal-title-text').textContent=id?'Editar pedido':'Nuevo pedido';
+  document.getElementById('f-cliente-text').value='';
+  document.getElementById('f-telefono').value='';
+  document.getElementById('f-fecha-pedido').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-estatus').value='pendiente';
+  document.getElementById('f-elab').value='';
+  document.getElementById('f-cambio').value='';
+  if(id){
+    const o=orders.find(x=>x.id===id);
+    if(o){
+      document.getElementById('f-cliente-text').value=o.cliente;
+      document.getElementById('f-telefono').value=o.telefono||'';
+      document.getElementById('f-fecha-pedido').value=o.fecha;
+      document.getElementById('f-estatus').value=o.estatus;
+      document.getElementById('f-elab').value=o.elab||'';
+      document.getElementById('f-cambio').value=o.cambio||'';
+      Object.keys(o.sabores).forEach(f=>selectedFlavors.add(f));
+    }
+  }
+  buildFlavorChecks();
+  if(id){
+    const o=orders.find(x=>x.id===id);
+    if(o) setTimeout(()=>{ Object.entries(o.sabores).forEach(([f,q])=>{ const el=document.getElementById('qty-'+f); if(el) el.value=q; }); },0);
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+};
+window.openEdit=function(id){ openModal(id); };
+window.closeModal=function(){ document.getElementById('modal-overlay').classList.remove('open'); closeClientList(); };
+
+window.saveOrder=async function(){
+  const cliente=document.getElementById('f-cliente-text').value.trim().toUpperCase();
+  if(!cliente){ alert('Escribe o selecciona un cliente.'); return; }
+  const telefono=document.getElementById('f-telefono').value.trim();
+  const fecha=document.getElementById('f-fecha-pedido').value;
+  const estatus=document.getElementById('f-estatus').value;
+  const elab=document.getElementById('f-elab').value;
+  const cambio=document.getElementById('f-cambio').value;
+  const sabores={};
+  selectedFlavors.forEach(f=>{ const v=parseInt(document.getElementById('qty-'+f)?.value)||0; if(v>0) sabores[f]=v; });
+  if(!Object.keys(sabores).length){ alert('Agrega al menos un sabor con piezas.'); return; }
+  try{
+    const existingClient=clients.find(c=>c.name===cliente);
+    if(!existingClient) await persistClientNew({name:cliente, phone:telefono});
+    else if(telefono && telefono!==existingClient.phone) await persistClientUpdate(existingClient.id,{phone:telefono});
+
+    const payload={cliente,telefono,fecha,sabores,estatus,elab,cambio};
+    if(editId) await persistOrderUpdate(editId, payload);
+    else await persistOrderNew(payload);
+
+    closeModal();
+  }catch(e){
+    console.error(e);
+    alert('No se pudo guardar. Revisa tu conexión a internet.');
+  }
+};
+
+window.deleteOrder=async function(id){
+  if(!confirm('¿Eliminar este pedido?')) return;
+  try{ await persistOrderDelete(id); }
+  catch(e){ console.error(e); alert('No se pudo eliminar. Revisa tu conexión.'); }
+};
+
+window.exportCSV=function(){
+  const header=['Cliente','Teléfono','Fecha pedido','Sabores','Total pzas','Estatus','Elaboración','Cambio antes de'];
+  const rows=orders.map(o=>[o.cliente,o.telefono||'',fmtDate(o.fecha),Object.entries(o.sabores).map(([f,q])=>`${f}:${q}`).join('; '),totalPzas(o.sabores),o.estatus,fmtDate(o.elab),fmtDate(o.cambio)]);
+  const csv=[header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download='embobate_pedidos.csv';
+  a.click();
+};
+
+window.render=render;
+render();
+</script>
+</body>
+</html>
