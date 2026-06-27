@@ -84,6 +84,18 @@
   .icon-btn:hover { background: #EFEEE8; color: #1A1A18; }
   .icon-btn.danger:hover { color: #C0392B; }
 
+  .kebab-wrap { position: relative; display: inline-block; }
+  .kebab-menu { position: fixed; background: #fff; border: 1px solid #E5E3DB; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.12); min-width: 190px; z-index: 200; padding: 6px; display: none; }
+  .kebab-menu.open { display: block; }
+  .kebab-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9C9A91; padding: 6px 10px 4px; }
+  .kebab-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #1A1A18; border-radius: 7px; text-align: left; }
+  .kebab-item:hover { background: #F4F3EF; }
+  .kebab-item.active { background: #EFEEE8; }
+  .kebab-item.danger { color: #C0392B; }
+  .kebab-item.danger:hover { background: #FAECE7; }
+  .kebab-item .dot-st { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .kebab-divider { height: 1px; background: #EFEEE8; margin: 5px 4px; }
+
   .empty-state { text-align: center; padding: 3rem 1rem; color: #6B6A65; }
   .empty-state i { font-size: 28px; display: block; margin: 0 auto 10px; color: #B5B3AA; }
   .empty-state p { font-size: 13px; font-weight: 600; }
@@ -414,6 +426,37 @@ function totalPzas(s){ return Object.values(s).reduce((a,b)=>a+b,0); }
 function fmtDate(s){ if(!s) return '—'; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
 function daysLeft(s){ if(!s) return null; const now=new Date(); now.setHours(0,0,0,0); const [y,m,d]=s.split('-').map(Number); const dd=new Date(y,m-1,d); dd.setHours(0,0,0,0); return Math.round((dd-now)/86400000); }
 
+const STATUS_LABEL={pendiente:'Pendiente','en ruta':'En ruta',entregado:'Entregado',cambio:'Por caducar'};
+const STATUS_COLOR={pendiente:'#E0A82E','en ruta':'#185FA5',entregado:'#3B6D11',cambio:'#C0392B'};
+
+window.toggleKebab=function(ev,id){
+  ev.stopPropagation();
+  const menu=document.getElementById('kebab-'+id);
+  const wasOpen=menu.classList.contains('open');
+  closeAllKebabs();
+  if(wasOpen) return;
+  const r=ev.currentTarget.getBoundingClientRect();
+  menu.style.top=(r.bottom+4)+'px';
+  // alinear el borde derecho del menú con el botón
+  let left=r.right-190;
+  if(left<8) left=8;
+  menu.style.left=left+'px';
+  menu.classList.add('open');
+};
+function closeAllKebabs(){
+  document.querySelectorAll('.kebab-menu.open').forEach(m=>m.classList.remove('open'));
+}
+document.addEventListener('click',closeAllKebabs);
+document.addEventListener('scroll',closeAllKebabs,true);
+
+window.changeStatus=async function(id,estatus){
+  closeAllKebabs();
+  const o=orders.find(x=>x.id===id);
+  if(!o||o.estatus===estatus) return;
+  try{ await persistOrderUpdate(id,{estatus}); }
+  catch(e){ console.error(e); alert('No se pudo cambiar el estatus. Revisa tu conexión.'); }
+};
+
 function statusBadge(s){
   const map={pendiente:'badge-pendiente',entregado:'badge-entregado','en ruta':'badge-enruta',cambio:'badge-cambio'};
   const label={pendiente:'Pendiente',entregado:'Entregado','en ruta':'En ruta',cambio:'Por caducar'};
@@ -464,9 +507,18 @@ function renderTable(){
       <td>${fmtDate(o.elab)}</td>
       <td class="${cc}">${cambioLabel}</td>
       <td>
-        <div class="row-actions">
-          <button class="icon-btn" onclick="openEdit('${o.id}')" title="Editar" aria-label="Editar pedido"><i class="ti ti-edit" aria-hidden="true"></i></button>
-          <button class="icon-btn danger" onclick="deleteOrder('${o.id}')" title="Eliminar" aria-label="Eliminar pedido"><i class="ti ti-trash" aria-hidden="true"></i></button>
+        <div class="kebab-wrap">
+          <button class="icon-btn" onclick="toggleKebab(event,'${o.id}')" title="Opciones" aria-label="Opciones del pedido"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          <div class="kebab-menu" id="kebab-${o.id}">
+            <div class="kebab-section-label">Cambiar estatus</div>
+            ${['pendiente','en ruta','entregado','cambio'].map(s=>`
+              <button class="kebab-item ${o.estatus===s?'active':''}" onclick="changeStatus('${o.id}','${s}')">
+                <span class="dot-st" style="background:${STATUS_COLOR[s]}"></span>${STATUS_LABEL[s]}
+              </button>`).join('')}
+            <div class="kebab-divider"></div>
+            <button class="kebab-item" onclick="openEdit('${o.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Editar pedido</button>
+            <button class="kebab-item danger" onclick="deleteOrder('${o.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar pedido</button>
+          </div>
         </div>
       </td>
     </tr>`;
@@ -573,7 +625,7 @@ window.openModal=function(id=null){
   }
   document.getElementById('modal-overlay').classList.add('open');
 };
-window.openEdit=function(id){ openModal(id); };
+window.openEdit=function(id){ closeAllKebabs(); openModal(id); };
 window.closeModal=function(){ document.getElementById('modal-overlay').classList.remove('open'); closeClientList(); };
 
 window.saveOrder=async function(){
