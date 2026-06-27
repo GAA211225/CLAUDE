@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Emboobate - Programación de entregas</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
-<meta name="theme-color" content="#FB7200">
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
+<meta name="theme-color" content="#1A1A18">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/tabler-icons.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,15 +21,15 @@
 
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .logo { width: 44px; height: 44px; border-radius: 12px; background: #FB7200; display: flex; align-items: center; justify-content: center; }
-  .logo i { font-size: 22px; color: #fff; }
+  .logo { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .logo img { width: 100%; height: 100%; object-fit: cover; }
   .brand-title { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
   .brand-sub { font-size: 13px; font-weight: 600; color: #6B6A65; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .btn { padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid #DCDAD2; background: #fff; color: #1A1A18; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
   .btn:hover { background: #EFEEE8; border-color: #C5C3BA; }
-  .btn-primary { background: #FB7200; color: #fff; border-color: #FB7200; }
-  .btn-primary:hover { background: #e56800; border-color: #e56800; }
+  .btn-primary { background: #1A1A18; color: #fff; border-color: #1A1A18; }
+  .btn-primary:hover { background: #333; border-color: #333; }
 
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
   .stat { background: #EFEEE8; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
@@ -97,18 +97,18 @@
   .modal-overlay.open { display: flex; }
   .modal { background: #fff; border-radius: 12px; border: 1px solid #E5E3DB; padding: 1.5rem; width: 100%; max-width: 560px; }
   .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 1.4rem; display: flex; align-items: center; gap: 9px; }
-  .modal-title i { font-size: 19px; color: #FB7200; }
+  .modal-title i { font-size: 19px; color: #1A1A18; }
   .form-section { margin-bottom: 1.4rem; }
   .form-section-label { font-size: 11px; font-weight: 700; color: #6B6A65; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #EFEEE8; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .form-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .form-label { font-size: 12px; font-weight: 700; color: #6B6A65; }
   .form-input, .form-select { width: 100%; padding: 9px 11px; border: 1px solid #DCDAD2; border-radius: 8px; font-size: 13px; font-weight: 600; background: #fff; color: #1A1A18; }
-  .form-input:focus, .form-select:focus { outline: none; border-color: #FB7200; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
+  .form-input:focus, .form-select:focus { outline: none; border-color: #1A1A18; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
 
   .client-dropdown-wrap { position: relative; }
   .client-input-row { display: flex; align-items: center; border: 1px solid #DCDAD2; border-radius: 8px; background: #fff; overflow: hidden; }
-  .client-input-row:focus-within { border-color: #FB7200; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
+  .client-input-row:focus-within { border-color: #1A1A18; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
   .client-text-input { flex: 1; padding: 9px 11px; border: none; background: transparent; font-size: 13px; font-weight: 600; color: #1A1A18; outline: none; min-width: 0; }
   .client-toggle { padding: 9px 11px; background: transparent; border: none; border-left: 1px solid #EFEEE8; cursor: pointer; color: #6B6A65; display: flex; align-items: center; }
   .client-toggle:hover { background: #EFEEE8; }
@@ -117,15 +117,15 @@
   .client-option { padding: 10px 12px; font-size: 13px; font-weight: 600; cursor: pointer; color: #1A1A18; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #EFEEE8; }
   .client-option:last-child { border-bottom: none; }
   .client-option:hover { background: #EFEEE8; }
-  .client-option.new-opt { color: #FB7200; font-weight: 700; }
+  .client-option.new-opt { color: #1A1A18; font-weight: 700; }
 
   .flavor-check { display: flex; flex-wrap: wrap; gap: 8px; }
   .flavor-opt { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; cursor: pointer; padding: 7px 14px; border: 1px solid #DCDAD2; border-radius: 20px; transition: all 0.15s; color: #6B6A65; user-select: none; }
   .flavor-opt:hover { border-color: #B5B3AA; }
-  .flavor-opt.checked { background: #FB7200; color: #fff; border-color: #FB7200; }
+  .flavor-opt.checked { background: #1A1A18; color: #fff; border-color: #1A1A18; }
   .qty-row { display: flex; align-items: center; gap: 8px; background: #EFEEE8; padding: 5px 8px 5px 12px; border-radius: 20px; }
   .qty-input { width: 56px; padding: 5px 6px; border: 1px solid #DCDAD2; border-radius: 8px; font-size: 13px; font-weight: 700; background: #fff; color: #1A1A18; text-align: center; }
-  .qty-input:focus { outline: none; border-color: #FB7200; }
+  .qty-input:focus { outline: none; border-color: #1A1A18; }
   .qty-label { font-size: 12px; font-weight: 700; }
 
   .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.6rem; border-top: 1px solid #EFEEE8; padding-top: 1.1rem; }
@@ -136,7 +136,7 @@
   .gate-card h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
   .gate-card p { font-size: 13px; color: #6B6A65; font-weight: 600; margin-bottom: 18px; }
   .gate-card input { width: 100%; padding: 11px; border: 1px solid #DCDAD2; border-radius: 8px; font-size: 15px; text-align: center; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 10px; }
-  .gate-card input:focus { outline: none; border-color: #FB7200; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
+  .gate-card input:focus { outline: none; border-color: #1A1A18; box-shadow: 0 0 0 3px rgba(251,114,0,0.12); }
   .gate-error { color: #C0392B; font-size: 12px; font-weight: 700; margin-bottom: 10px; min-height: 16px; }
   .gate-card .btn-primary { width: 100%; justify-content: center; padding: 11px; }
   .conn-pill { position: fixed; bottom: 14px; right: 14px; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; z-index: 50; }
@@ -154,8 +154,8 @@
 
 <div class="gate-overlay" id="gate-overlay">
   <div class="gate-card">
-    <div class="logo" style="width:48px;height:48px;border-radius:12px;background:#FB7200;display:flex;align-items:center;justify-content:center;">
-      <i class="ti ti-droplet-filled" style="font-size:24px;color:#fff;" aria-hidden="true"></i>
+    <div class="logo" style="width:48px;height:48px;border-radius:12px;">
+      <img src="logo.png" alt="Emboobate">
     </div>
     <h2>Emboobate</h2>
     <p>Ingresa el código de acceso</p>
@@ -170,7 +170,7 @@
 <div class="container" id="app-container" style="display:none;">
   <div class="header">
     <div class="brand">
-      <div class="logo"><i class="ti ti-droplet-filled" aria-hidden="true"></i></div>
+      <div class="logo"><img src="logo.png" alt="Emboobate"></div>
       <div>
         <div class="brand-title">Emboobate</div>
         <div class="brand-sub">Programación de entregas</div>
@@ -185,7 +185,7 @@
   <div class="stats" id="stats"></div>
 
   <div class="section-header">
-    <div class="section-title"><i class="ti ti-truck-delivery" style="font-size:18px;color:#FB7200;" aria-hidden="true"></i> Pedidos</div>
+    <div class="section-title"><i class="ti ti-truck-delivery" style="font-size:18px;color:#1A1A18;" aria-hidden="true"></i> Pedidos</div>
     <div class="tabs" id="tabs">
       <button class="tab active" onclick="setTab('todos',this)">Todos</button>
       <button class="tab" onclick="setTab('pendiente',this)">Pendiente</button>

@@ -1,8 +1,8 @@
-const CACHE_NAME = 'emboobate-cache-v1';
+const CACHE_NAME = 'emboobate-cache-v2';
 const ASSETS = [
   './embobate.html',
   './manifest.json',
-  './icon.svg'
+  './logo.png'
 ];
 
 self.addEventListener('install', (event) => {
