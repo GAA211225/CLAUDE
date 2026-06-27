@@ -85,6 +85,9 @@
   .icon-btn.danger:hover { color: #C0392B; }
 
   .kebab-wrap { position: relative; display: inline-block; }
+  .kebab-btn { border: 1px solid #DCDAD2; background: #fff; border-radius: 8px; }
+  .kebab-btn:hover { background: #EFEEE8; border-color: #C5C3BA; }
+  .kebab-btn svg { display: block; }
   .kebab-menu { position: fixed; background: #fff; border: 1px solid #E5E3DB; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.12); min-width: 190px; z-index: 200; padding: 6px; display: none; }
   .kebab-menu.open { display: block; }
   .kebab-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9C9A91; padding: 6px 10px 4px; }
@@ -562,7 +565,7 @@ function renderTable(){
       <td class="${cc}">${cambioLabel}</td>
       <td>
         <div class="kebab-wrap">
-          <button class="icon-btn" onclick="toggleKebab(event,'${o.id}')" title="Opciones" aria-label="Opciones del pedido"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          <button class="icon-btn kebab-btn" onclick="toggleKebab(event,'${o.id}')" title="Opciones" aria-label="Opciones del pedido"><svg width="22" height="22" viewBox="0 0 20 20" fill="#1A1A18" aria-hidden="true"><circle cx="10" cy="4" r="1.9"/><circle cx="10" cy="10" r="1.9"/><circle cx="10" cy="16" r="1.9"/></svg></button>
           <div class="kebab-menu" id="kebab-${o.id}">
             <div class="kebab-section-label">Cambiar estatus</div>
             ${['pendiente','en ruta','entregado','cambio'].map(s=>`
