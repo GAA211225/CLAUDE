@@ -65,6 +65,9 @@
   .badge-entregado { background: #EAF3DE; color: #3B6D11; }
   .badge-enruta { background: #E6F1FB; color: #185FA5; }
   .badge-cambio { background: #FAECE7; color: #993C1D; }
+  .badge-pago-pendiente { background: #F1EFE8; color: #5F5E5A; }
+  .badge-pago-abonado { background: #E6F1FB; color: #185FA5; }
+  .badge-pago-saldado { background: #EAF3DE; color: #3B6D11; }
 
   .flavor-pills { display: flex; flex-wrap: wrap; gap: 5px; }
   .fpill { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
@@ -221,6 +224,7 @@
             <th>Sabores y piezas</th>
             <th>Total</th>
             <th>Estatus</th>
+            <th>Pago</th>
             <th>Elaboración</th>
             <th>Cambio antes de</th>
             <th></th>
@@ -299,6 +303,24 @@
         <label class="form-label">Sabores</label>
         <div class="flavor-check" id="flavor-checks"></div>
         <div id="qty-inputs" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;"></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-label">Pago</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">Estatus de pago</label>
+          <select class="form-select" id="f-pago" onchange="onPagoChange()">
+            <option value="pendiente">Pendiente</option>
+            <option value="abonado">Abonado</option>
+            <option value="saldado">Saldado</option>
+          </select>
+        </div>
+        <div class="form-field" id="abono-field" style="display:none;">
+          <label class="form-label">Monto abonado ($)</label>
+          <input class="form-input" type="number" id="f-abono" min="0" step="1" placeholder="0">
+        </div>
       </div>
     </div>
 
@@ -485,6 +507,8 @@ function daysLeft(s){ if(!s) return null; const now=new Date(); now.setHours(0,0
 
 const STATUS_LABEL={pendiente:'Pendiente','en ruta':'En ruta',entregado:'Entregado',cambio:'Por caducar'};
 const STATUS_COLOR={pendiente:'#E0A82E','en ruta':'#185FA5',entregado:'#3B6D11',cambio:'#C0392B'};
+const PAGO_LABEL={pendiente:'Pendiente',abonado:'Abonado',saldado:'Saldado'};
+const PAGO_COLOR={pendiente:'#9C9A91',abonado:'#185FA5',saldado:'#3B6D11'};
 
 window.toggleKebab=function(ev,id){
   ev.stopPropagation();
@@ -513,6 +537,37 @@ window.changeStatus=async function(id,estatus){
   try{ await persistOrderUpdate(id,{estatus}); }
   catch(e){ console.error(e); alert('No se pudo cambiar el estatus. Revisa tu conexión.'); }
 };
+
+window.changePago=async function(id,pago){
+  closeAllKebabs();
+  const o=orders.find(x=>x.id===id);
+  if(!o) return;
+  let abono=0;
+  if(pago==='abonado'){
+    const prev=o.abono?String(o.abono):'';
+    const input=prompt('¿Con cuánto dinero abona? (solo el número)', prev);
+    if(input===null) return; // canceló
+    abono=parseFloat(input)||0;
+    if(abono<=0){ alert('Monto inválido.'); return; }
+  }
+  if(o.pago===pago && (o.abono||0)===abono) return;
+  try{ await persistOrderUpdate(id,{pago,abono}); }
+  catch(e){ console.error(e); alert('No se pudo cambiar el pago. Revisa tu conexión.'); }
+};
+
+window.onPagoChange=function(){
+  const v=document.getElementById('f-pago').value;
+  document.getElementById('abono-field').style.display = v==='abonado' ? 'block' : 'none';
+};
+
+function fmtMoney(n){ return '$'+(Number(n)||0).toLocaleString('es-MX'); }
+
+function pagoBadge(o){
+  const p=o.pago||'pendiente';
+  if(p==='saldado') return `<span class="badge badge-pago-saldado"><i class="ti ti-circle-check" style="font-size:12px;" aria-hidden="true"></i>Saldado</span>`;
+  if(p==='abonado') return `<span class="badge badge-pago-abonado"><i class="ti ti-cash" style="font-size:12px;" aria-hidden="true"></i>Abonado ${fmtMoney(o.abono)}</span>`;
+  return `<span class="badge badge-pago-pendiente"><i class="ti ti-clock" style="font-size:12px;" aria-hidden="true"></i>Pendiente</span>`;
+}
 
 function statusBadge(s){
   const map={pendiente:'badge-pendiente',entregado:'badge-entregado','en ruta':'badge-enruta',cambio:'badge-cambio'};
@@ -545,7 +600,7 @@ function renderTable(){
   const filtered=currentTab==='todos'?orders:orders.filter(o=>o.estatus===currentTab);
   const tbody=document.getElementById('tbody');
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><i class="ti ti-inbox" aria-hidden="true"></i><p>Sin pedidos en esta categoría</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><i class="ti ti-inbox" aria-hidden="true"></i><p>Sin pedidos en esta categoría</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML=filtered.map(o=>{
@@ -561,6 +616,7 @@ function renderTable(){
       <td><div class="flavor-pills">${pills}</div></td>
       <td><span class="total-pzas">${totalPzas(o.sabores)}</span></td>
       <td>${statusBadge(o.estatus)}</td>
+      <td>${pagoBadge(o)}</td>
       <td>${fmtDate(o.elab)}</td>
       <td class="${cc}">${cambioLabel}</td>
       <td>
@@ -571,6 +627,12 @@ function renderTable(){
             ${['pendiente','en ruta','entregado','cambio'].map(s=>`
               <button class="kebab-item ${o.estatus===s?'active':''}" onclick="changeStatus('${o.id}','${s}')">
                 <span class="dot-st" style="background:${STATUS_COLOR[s]}"></span>${STATUS_LABEL[s]}
+              </button>`).join('')}
+            <div class="kebab-divider"></div>
+            <div class="kebab-section-label">Pago</div>
+            ${['pendiente','abonado','saldado'].map(p=>`
+              <button class="kebab-item ${(o.pago||'pendiente')===p?'active':''}" onclick="changePago('${o.id}','${p}')">
+                <span class="dot-st" style="background:${PAGO_COLOR[p]}"></span>${PAGO_LABEL[p]}
               </button>`).join('')}
             <div class="kebab-divider"></div>
             <button class="kebab-item" onclick="openEdit('${o.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Editar pedido</button>
@@ -661,6 +723,8 @@ window.openModal=function(id=null){
   document.getElementById('f-telefono').value='';
   document.getElementById('f-fecha-pedido').value=new Date().toISOString().split('T')[0];
   document.getElementById('f-estatus').value='pendiente';
+  document.getElementById('f-pago').value='pendiente';
+  document.getElementById('f-abono').value='';
   document.getElementById('f-elab').value='';
   document.getElementById('f-cambio').value='';
   if(id){
@@ -670,11 +734,14 @@ window.openModal=function(id=null){
       document.getElementById('f-telefono').value=o.telefono||'';
       document.getElementById('f-fecha-pedido').value=o.fecha;
       document.getElementById('f-estatus').value=o.estatus;
+      document.getElementById('f-pago').value=o.pago||'pendiente';
+      document.getElementById('f-abono').value=o.abono||'';
       document.getElementById('f-elab').value=o.elab||'';
       document.getElementById('f-cambio').value=o.cambio||'';
       Object.keys(o.sabores).forEach(f=>selectedFlavors.add(f));
     }
   }
+  onPagoChange();
   buildFlavorChecks();
   if(id){
     const o=orders.find(x=>x.id===id);
@@ -691,17 +758,20 @@ window.saveOrder=async function(){
   const telefono=document.getElementById('f-telefono').value.trim();
   const fecha=document.getElementById('f-fecha-pedido').value;
   const estatus=document.getElementById('f-estatus').value;
+  const pago=document.getElementById('f-pago').value;
+  const abono=pago==='abonado' ? (parseFloat(document.getElementById('f-abono').value)||0) : 0;
   const elab=document.getElementById('f-elab').value;
   const cambio=document.getElementById('f-cambio').value;
   const sabores={};
   selectedFlavors.forEach(f=>{ const v=parseInt(document.getElementById('qty-'+f)?.value)||0; if(v>0) sabores[f]=v; });
   if(!Object.keys(sabores).length){ alert('Agrega al menos un sabor con piezas.'); return; }
+  if(pago==='abonado' && abono<=0){ alert('Escribe el monto abonado.'); return; }
   try{
     const existingClient=clients.find(c=>c.name===cliente);
     if(!existingClient) await persistClientNew({name:cliente, phone:telefono});
     else if(telefono && telefono!==existingClient.phone) await persistClientUpdate(existingClient.id,{phone:telefono});
 
-    const payload={cliente,telefono,fecha,sabores,estatus,elab,cambio};
+    const payload={cliente,telefono,fecha,sabores,estatus,pago,abono,elab,cambio};
     if(editId) await persistOrderUpdate(editId, payload);
     else await persistOrderNew(payload);
 
@@ -719,8 +789,8 @@ window.deleteOrder=async function(id){
 };
 
 window.exportCSV=function(){
-  const header=['Cliente','Teléfono','Fecha pedido','Sabores','Total pzas','Estatus','Elaboración','Cambio antes de'];
-  const rows=orders.map(o=>[o.cliente,o.telefono||'',fmtDate(o.fecha),Object.entries(o.sabores).map(([f,q])=>`${f}:${q}`).join('; '),totalPzas(o.sabores),o.estatus,fmtDate(o.elab),fmtDate(o.cambio)]);
+  const header=['Cliente','Teléfono','Fecha pedido','Sabores','Total pzas','Estatus','Pago','Abono','Elaboración','Cambio antes de'];
+  const rows=orders.map(o=>[o.cliente,o.telefono||'',fmtDate(o.fecha),Object.entries(o.sabores).map(([f,q])=>`${f}:${q}`).join('; '),totalPzas(o.sabores),o.estatus,o.pago||'pendiente',(o.pago==='abonado'?(o.abono||0):''),fmtDate(o.elab),fmtDate(o.cambio)]);
   const csv=[header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);

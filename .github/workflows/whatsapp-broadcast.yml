@@ -1,0 +1,38 @@
+name: Invitaciones por WhatsApp
+
+on:
+  schedule:
+    # 16:00 UTC = 10:00 AM hora de México (UTC-6).
+    # Corre a diario; el script solo escribe a quien no se contactó en 3 días.
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Simular sin enviar (1 = sí)'
+        required: false
+        default: '0'
+      test_to:
+        description: 'Solo enviar a estos números (coma), para pruebas'
+        required: false
+        default: ''
+
+jobs:
+  broadcast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias
+        working-directory: notifier
+        run: npm install
+      - name: Enviar invitaciones
+        working-directory: notifier
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          WHATSAPP_TEST_TO: ${{ github.event.inputs.test_to }}
+        run: node whatsapp-broadcast.js
