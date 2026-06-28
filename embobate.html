@@ -45,6 +45,21 @@
   .tab { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; background: transparent; color: #6B6A65; transition: all 0.15s; }
   .tab.active { background: #fff; color: #1A1A18; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
 
+  .main-nav { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #E5E3DB; }
+  .main-nav-btn { padding: 10px 18px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 700; color: #6B6A65; display: flex; align-items: center; gap: 6px; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .main-nav-btn:hover { color: #1A1A18; }
+  .main-nav-btn.active { color: #1A1A18; border-bottom-color: #1A1A18; }
+
+  .precios-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .precio-row { display: flex; flex-direction: column; gap: 6px; }
+  .precio-row .precio-label { font-size: 13px; font-weight: 700; color: #1A1A18; }
+  .precio-input-wrap { display: flex; align-items: center; border: 1px solid #DCDAD2; border-radius: 8px; padding: 0 10px; background: #fff; }
+  .precio-input-wrap:focus-within { border-color: #1A1A18; box-shadow: 0 0 0 3px rgba(26,26,24,0.10); }
+  .precio-input-wrap span { font-weight: 700; color: #6B6A65; }
+  .precio-input-wrap input { border: none; outline: none; padding: 10px 6px; width: 100%; font-size: 14px; font-weight: 600; background: transparent; }
+  .importe-val { font-weight: 700; font-size: 14px; }
+  .resta-val { font-size: 11px; font-weight: 700; color: #993C1D; }
+
   .table-card { background: #fff; border: 1px solid #E5E3DB; border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
@@ -201,6 +216,12 @@
     </div>
   </div>
 
+  <div class="main-nav">
+    <button class="main-nav-btn active" id="nav-pedidos" onclick="showView('pedidos')"><i class="ti ti-truck-delivery" aria-hidden="true"></i> Pedidos</button>
+    <button class="main-nav-btn" id="nav-precios" onclick="showView('precios')"><i class="ti ti-tag" aria-hidden="true"></i> Precios</button>
+  </div>
+
+  <div id="view-pedidos">
   <div class="stats" id="stats"></div>
 
   <div class="section-header">
@@ -223,6 +244,7 @@
             <th>Fecha pedido</th>
             <th>Sabores y piezas</th>
             <th>Total</th>
+            <th>Importe</th>
             <th>Estatus</th>
             <th>Pago</th>
             <th>Elaboración</th>
@@ -254,6 +276,21 @@
         </thead>
         <tbody id="cad-tbody"></tbody>
       </table>
+    </div>
+  </div>
+  </div><!-- /view-pedidos -->
+
+  <div id="view-precios" style="display:none;">
+    <div class="section-header">
+      <div class="section-title"><i class="ti ti-tag" style="font-size:18px;color:#1A1A18;" aria-hidden="true"></i> Precio por botella</div>
+    </div>
+    <div class="table-card" style="padding:18px;">
+      <p style="font-size:13px;color:#6B6A65;font-weight:600;margin-bottom:16px;">Define el costo de cada sabor. Se usa para calcular el total de cada pedido. Puedes cambiarlo cuando varíe.</p>
+      <div id="precios-list" class="precios-grid"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:18px;">
+        <button class="btn btn-primary" onclick="savePrices()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar precios</button>
+        <span id="precios-msg" style="font-size:13px;font-weight:700;color:#3B6D11;"></span>
+      </div>
     </div>
   </div>
 </div>
@@ -380,12 +417,14 @@ if ('serviceWorker' in navigator) {
 const ordersCol = collection(db, "orders");
 const clientsCol = collection(db, "clients");
 const accessDocRef = doc(db, "config", "access");
+const pricesDocRef = doc(db, "config", "prices");
 
 window.FLAVORS = ['Piña','Jamaica','Horchata','Taro','Chai','Otro'];
 window.FLAVOR_CLASS = {Piña:'pina',Jamaica:'jamaica',Horchata:'horchata',Taro:'taro',Chai:'chai',Otro:'otro'};
 
 window.orders = [];
 window.clients = [];
+window.prices = {};
 let currentTab = 'todos';
 let editId = null;
 let selectedFlavors = new Set();
@@ -453,6 +492,12 @@ onSnapshot(clientsCol, (snap)=>{
   window.clients = snap.docs.map(d=>({id:d.id, ...d.data()}));
 }, (err)=>{ console.error(err); setConn(false); });
 
+onSnapshot(pricesDocRef, (snap)=>{
+  window.prices = (snap.exists() && snap.data()) || {};
+  renderPrecios();
+  renderTable();
+}, (err)=>{ console.error(err); });
+
 async function checkAccessCode(){
   const input = document.getElementById('gate-code').value.trim();
   const errEl = document.getElementById('gate-error');
@@ -502,6 +547,13 @@ function persistClientNew(c){ return addDoc(clientsCol, c); }
 function persistClientUpdate(id, c){ return updateDoc(doc(db,"clients",id), c); }
 
 function totalPzas(s){ return Object.values(s).reduce((a,b)=>a+b,0); }
+function orderTotal(o){ return Object.entries(o.sabores||{}).reduce((sum,[f,q])=>sum+q*(Number(prices[f])||0),0); }
+function saldoRestante(o){
+  const total=orderTotal(o);
+  if((o.pago||'pendiente')==='saldado') return 0;
+  if(o.pago==='abonado') return Math.max(total-(Number(o.abono)||0),0);
+  return total; // pendiente: debe todo
+}
 function fmtDate(s){ if(!s) return '—'; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
 function daysLeft(s){ if(!s) return null; const now=new Date(); now.setHours(0,0,0,0); const [y,m,d]=s.split('-').map(Number); const dd=new Date(y,m-1,d); dd.setHours(0,0,0,0); return Math.round((dd-now)/86400000); }
 
@@ -565,7 +617,11 @@ function fmtMoney(n){ return '$'+(Number(n)||0).toLocaleString('es-MX'); }
 function pagoBadge(o){
   const p=o.pago||'pendiente';
   if(p==='saldado') return `<span class="badge badge-pago-saldado"><i class="ti ti-circle-check" style="font-size:12px;" aria-hidden="true"></i>Saldado</span>`;
-  if(p==='abonado') return `<span class="badge badge-pago-abonado"><i class="ti ti-cash" style="font-size:12px;" aria-hidden="true"></i>Abonado ${fmtMoney(o.abono)}</span>`;
+  if(p==='abonado'){
+    const resta=saldoRestante(o);
+    return `<span class="badge badge-pago-abonado"><i class="ti ti-cash" style="font-size:12px;" aria-hidden="true"></i>Abonó ${fmtMoney(o.abono)}</span>`
+      + (resta>0?`<div class="resta-val">Resta ${fmtMoney(resta)}</div>`:`<div class="resta-val" style="color:#3B6D11;">Sin saldo</div>`);
+  }
   return `<span class="badge badge-pago-pendiente"><i class="ti ti-clock" style="font-size:12px;" aria-hidden="true"></i>Pendiente</span>`;
 }
 
@@ -600,7 +656,7 @@ function renderTable(){
   const filtered=currentTab==='todos'?orders:orders.filter(o=>o.estatus===currentTab);
   const tbody=document.getElementById('tbody');
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><i class="ti ti-inbox" aria-hidden="true"></i><p>Sin pedidos en esta categoría</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="10"><div class="empty-state"><i class="ti ti-inbox" aria-hidden="true"></i><p>Sin pedidos en esta categoría</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML=filtered.map(o=>{
@@ -615,6 +671,7 @@ function renderTable(){
       <td>${fmtDate(o.fecha)}</td>
       <td><div class="flavor-pills">${pills}</div></td>
       <td><span class="total-pzas">${totalPzas(o.sabores)}</span></td>
+      <td><span class="importe-val">${fmtMoney(orderTotal(o))}</span></td>
       <td>${statusBadge(o.estatus)}</td>
       <td>${pagoBadge(o)}</td>
       <td>${fmtDate(o.elab)}</td>
@@ -677,6 +734,42 @@ function renderCaducidad(){
 }
 
 function render(){ renderStats(); renderTable(); renderCaducidad(); }
+
+window.showView=function(view){
+  document.getElementById('view-pedidos').style.display = view==='pedidos' ? 'block' : 'none';
+  document.getElementById('view-precios').style.display = view==='precios' ? 'block' : 'none';
+  document.getElementById('nav-pedidos').classList.toggle('active', view==='pedidos');
+  document.getElementById('nav-precios').classList.toggle('active', view==='precios');
+  if(view==='precios') renderPrecios();
+};
+
+function renderPrecios(){
+  const el=document.getElementById('precios-list');
+  if(!el) return;
+  el.innerHTML=FLAVORS.map(f=>`
+    <div class="precio-row">
+      <span class="precio-label">${f}</span>
+      <div class="precio-input-wrap">
+        <span>$</span>
+        <input type="number" min="0" step="1" id="precio-${f}" value="${prices[f]!=null?prices[f]:''}" placeholder="0">
+      </div>
+    </div>`).join('');
+}
+
+window.savePrices=async function(){
+  const payload={};
+  FLAVORS.forEach(f=>{ payload[f]=parseFloat(document.getElementById('precio-'+f).value)||0; });
+  const msg=document.getElementById('precios-msg');
+  try{
+    await setDoc(pricesDocRef, payload);
+    msg.textContent='✓ Precios guardados';
+    setTimeout(()=>{ msg.textContent=''; },2500);
+  }catch(e){
+    console.error(e);
+    msg.style.color='#C0392B';
+    msg.textContent='No se pudo guardar. Revisa tu conexión.';
+  }
+};
 window.setTab=function(tab,el){ currentTab=tab; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderTable(); };
 
 function buildClientList(filter=''){
