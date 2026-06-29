@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#1A1A18">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/tabler-icons.min.css">
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -217,7 +219,7 @@
     </div>
     <div class="actions">
       <button class="btn" id="notif-btn" onclick="enableNotifications()"><i class="ti ti-bell" aria-hidden="true"></i> Activar avisos</button>
-      <button class="btn" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> Exportar</button>
+      <button class="btn" onclick="exportPDF()"><i class="ti ti-download" aria-hidden="true"></i> Exportar</button>
       <button class="btn btn-primary" onclick="openModal()"><i class="ti ti-plus" aria-hidden="true"></i> Nuevo pedido</button>
     </div>
   </div>
@@ -396,7 +398,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, getDoc, setDoc, enableIndexedDbPersistence
+  onSnapshot, getDoc, setDoc, enableIndexedDbPersistence, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
 
@@ -428,6 +430,7 @@ const ordersCol = collection(db, "orders");
 const clientsCol = collection(db, "clients");
 const accessDocRef = doc(db, "config", "access");
 const pricesDocRef = doc(db, "config", "prices");
+const ticketsCol = collection(db, "ticketsQueue");
 
 window.FLAVORS = ['Piña','Jamaica','Horchata','Taro','Chai','Otro'];
 window.FLAVOR_CLASS = {Piña:'pina',Jamaica:'jamaica',Horchata:'horchata',Taro:'taro',Chai:'chai',Otro:'otro'};
@@ -554,6 +557,7 @@ function persistOrderNew(o){ return addDoc(ordersCol, o); }
 function persistOrderUpdate(id, o){ return updateDoc(doc(db,"orders",id), o); }
 function persistOrderDelete(id){ return deleteDoc(doc(db,"orders",id)); }
 function persistClientNew(c){ return addDoc(clientsCol, c); }
+function persistTicketQueue(t){ return addDoc(ticketsCol, t); }
 function persistClientUpdate(id, c){ return updateDoc(doc(db,"clients",id), c); }
 
 function totalPzas(s){ return Object.values(s).reduce((a,b)=>a+b,0); }
@@ -718,6 +722,9 @@ function renderTable(){
               <button class="kebab-item ${(o.pago||'pendiente')===p?'active':''}" onclick="changePago('${o.id}','${p}')">
                 <span class="dot-st" style="background:${PAGO_COLOR[p]}"></span>${PAGO_LABEL[p]}
               </button>`).join('')}
+            <div class="kebab-divider"></div>
+            <button class="kebab-item" onclick="downloadTicket('${o.id}')"><i class="ti ti-receipt" aria-hidden="true"></i> Descargar ticket (PDF)</button>
+            <button class="kebab-item" onclick="resendTicket('${o.id}')"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i> Reenviar ticket por WhatsApp</button>
             <div class="kebab-divider"></div>
             <button class="kebab-item" onclick="openEdit('${o.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Editar pedido</button>
             <button class="kebab-item danger" onclick="deleteOrder('${o.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar pedido</button>
@@ -893,8 +900,21 @@ window.saveOrder=async function(){
     else if(telefono && telefono!==existingClient.phone) await persistClientUpdate(existingClient.id,{phone:telefono});
 
     const payload={cliente,telefono,fecha,sabores,estatus,pago,abono,elab,cambio};
-    if(editId) await persistOrderUpdate(editId, payload);
-    else await persistOrderNew(payload);
+    if(editId){
+      await persistOrderUpdate(editId, payload);
+    } else {
+      const ref=await persistOrderNew(payload);
+      if(telefono){
+        const total=orderTotal(payload);
+        const resta=saldoRestante(payload);
+        await persistTicketQueue({
+          orderId: ref.id, cliente, telefono,
+          items: Object.entries(sabores).map(([f,q])=>`${f} x${q}`).join(', '),
+          total, pago, abono, resta,
+          status: 'pending', created: serverTimestamp()
+        }).catch(e=>console.warn('No se pudo encolar el ticket (se reintentará offline):', e));
+      }
+    }
 
     closeModal();
   }catch(e){
@@ -909,14 +929,104 @@ window.deleteOrder=async function(id){
   catch(e){ console.error(e); alert('No se pudo eliminar. Revisa tu conexión.'); }
 };
 
-window.exportCSV=function(){
-  const header=['Cliente','Teléfono','Fecha pedido','Sabores','Total pzas','Estatus','Pago','Abono','Elaboración','Cambio antes de'];
-  const rows=orders.map(o=>[o.cliente,o.telefono||'',fmtDate(o.fecha),Object.entries(o.sabores).map(([f,q])=>`${f}:${q}`).join('; '),totalPzas(o.sabores),o.estatus,o.pago||'pendiente',(o.pago==='abonado'?(o.abono||0):''),fmtDate(o.elab),fmtDate(o.cambio)]);
-  const csv=[header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
-  a.download='embobate_pedidos.csv';
-  a.click();
+window.exportPDF=function(){
+  const { jsPDF }=window.jspdf;
+  const docu=new jsPDF({orientation:'landscape',unit:'pt',format:'letter'});
+  docu.setFontSize(16);
+  docu.text('Emboobate - Reporte de ventas',40,30);
+  docu.setFontSize(10);
+  docu.text('Generado: '+new Date().toLocaleString('es-MX'),40,46);
+
+  const rows=orders.map(o=>{
+    const total=orderTotal(o);
+    const resta=saldoRestante(o);
+    return [
+      o.cliente, o.telefono||'', fmtDate(o.fecha),
+      Object.entries(o.sabores).map(([f,q])=>`${f}:${q}`).join(', '),
+      totalPzas(o.sabores), fmtMoney(total),
+      STATUS_LABEL[o.estatus]||o.estatus, PAGO_LABEL[o.pago||'pendiente'],
+      resta>0?fmtMoney(resta):'Sin saldo', fmtDate(o.elab), fmtDate(o.cambio)
+    ];
+  });
+
+  const ingresos=orders.reduce((s,o)=>s+( (o.pago==='abonado')?(Number(o.abono)||0):(o.pago==='saldado'?orderTotal(o):0) ),0);
+  const porCobrar=orders.reduce((s,o)=>s+saldoRestante(o),0);
+
+  docu.autoTable({
+    startY:58,
+    head:[['Cliente','Teléfono','Fecha','Sabores','Pzas','Importe','Estatus','Pago','Resta','Elaboración','Cambio antes de']],
+    body:rows,
+    styles:{fontSize:8},
+    headStyles:{fillColor:[28,96,156]}
+  });
+
+  const finalY=(docu.lastAutoTable && docu.lastAutoTable.finalY)||58;
+  docu.setFontSize(11);
+  docu.text(`Total cobrado: ${fmtMoney(ingresos)}`,40,finalY+24);
+  docu.text(`Por cobrar: ${fmtMoney(porCobrar)}`,220,finalY+24);
+
+  docu.save('embobate_reporte_ventas.pdf');
+};
+
+function buildTicketPDF(o){
+  const { jsPDF }=window.jspdf;
+  const docu=new jsPDF({unit:'pt',format:[226,500]});
+  let y=20;
+  docu.setFontSize(14);
+  docu.text('Emboobate',113,y,{align:'center'}); y+=18;
+  docu.setFontSize(9);
+  docu.text('Ticket de venta',113,y,{align:'center'}); y+=18;
+  docu.text('-------------------------------',113,y,{align:'center'}); y+=14;
+  docu.setFontSize(9);
+  docu.text(`Cliente: ${o.cliente}`,14,y); y+=14;
+  if(o.telefono){ docu.text(`Tel: ${o.telefono}`,14,y); y+=14; }
+  docu.text(`Fecha pedido: ${fmtDate(o.fecha)}`,14,y); y+=14;
+  docu.text('-------------------------------',113,y,{align:'center'}); y+=14;
+  Object.entries(o.sabores||{}).forEach(([f,q])=>{
+    const sub=q*(Number(prices[f])||0);
+    docu.text(`${f} x${q}`,14,y);
+    docu.text(fmtMoney(sub),212,y,{align:'right'});
+    y+=14;
+  });
+  docu.text('-------------------------------',113,y,{align:'center'}); y+=14;
+  const total=orderTotal(o);
+  const resta=saldoRestante(o);
+  docu.setFontSize(10);
+  docu.text('Total:',14,y); docu.text(fmtMoney(total),212,y,{align:'right'}); y+=14;
+  docu.setFontSize(9);
+  docu.text(`Pago: ${PAGO_LABEL[o.pago||'pendiente']}`,14,y); y+=14;
+  if(o.pago==='abonado'){ docu.text(`Abonado: ${fmtMoney(o.abono)}`,14,y); y+=14; docu.text(`Resta: ${fmtMoney(resta)}`,14,y); y+=14; }
+  docu.text(`Cambio de aguas antes de: ${fmtDate(o.cambio)}`,14,y); y+=18;
+  docu.setFontSize(8);
+  docu.text('¡Gracias por tu compra!',113,y,{align:'center'});
+  return docu;
+}
+
+window.downloadTicket=function(id){
+  const o=orders.find(x=>x.id===id);
+  if(!o){ alert('Pedido no encontrado.'); return; }
+  const docu=buildTicketPDF(o);
+  docu.save(`ticket_${(o.cliente||'pedido').replace(/\s+/g,'_')}.pdf`);
+};
+
+window.resendTicket=async function(id){
+  const o=orders.find(x=>x.id===id);
+  if(!o){ alert('Pedido no encontrado.'); return; }
+  if(!o.telefono){ alert('Este pedido no tiene teléfono registrado.'); return; }
+  try{
+    const total=orderTotal(o);
+    const resta=saldoRestante(o);
+    await persistTicketQueue({
+      orderId:id, cliente:o.cliente, telefono:o.telefono,
+      items:Object.entries(o.sabores||{}).map(([f,q])=>`${f} x${q}`).join(', '),
+      total, pago:o.pago||'pendiente', abono:o.abono||0, resta,
+      status:'pending', created:serverTimestamp()
+    });
+    alert('Ticket encolado. Se enviará por WhatsApp en cuanto haya conexión.');
+  }catch(e){
+    console.error(e);
+    alert('No se pudo encolar el ticket. Revisa tu conexión.');
+  }
 };
 
 window.render=render;

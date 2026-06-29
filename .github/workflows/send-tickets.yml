@@ -1,0 +1,27 @@
+name: Enviar tickets de venta por WhatsApp
+
+on:
+  schedule:
+    # Cada 15 minutos. Revisa la cola "ticketsQueue"; si no hay credenciales
+    # de WhatsApp configuradas todavía, termina sin hacer nada.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  send-tickets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias
+        working-directory: notifier
+        run: npm install
+      - name: Enviar tickets pendientes
+        working-directory: notifier
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+        run: node send-tickets.js
