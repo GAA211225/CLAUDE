@@ -59,6 +59,12 @@
   .precio-input-wrap input { border: none; outline: none; padding: 10px 6px; width: 100%; font-size: 14px; font-weight: 600; background: transparent; }
   .importe-val { font-weight: 700; font-size: 14px; }
   .resta-val { font-size: 11px; font-weight: 700; color: #993C1D; }
+  .form-total-box { margin-top: 14px; background: #F7F6F2; border: 1px solid #E5E3DB; border-radius: 10px; padding: 12px 14px; }
+  .form-total-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; }
+  .form-total-row + .form-total-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #DCDAD2; }
+  .form-total-row span { color: #6B6A65; }
+  .form-total-row strong { font-size: 16px; }
+  #form-resta-row strong { color: #993C1D; }
 
   .table-card { background: #fff; border: 1px solid #E5E3DB; border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
   .table-wrap { overflow-x: auto; }
@@ -356,8 +362,12 @@
         </div>
         <div class="form-field" id="abono-field" style="display:none;">
           <label class="form-label">Monto abonado ($)</label>
-          <input class="form-input" type="number" id="f-abono" min="0" step="1" placeholder="0">
+          <input class="form-input" type="number" id="f-abono" min="0" step="1" placeholder="0" oninput="updateFormTotals()">
         </div>
+      </div>
+      <div class="form-total-box">
+        <div class="form-total-row"><span>Total del pedido</span><strong id="form-total">$0</strong></div>
+        <div class="form-total-row" id="form-resta-row" style="display:none;"><span>Resta por pagar</span><strong id="form-resta">$0</strong></div>
       </div>
     </div>
 
@@ -610,6 +620,23 @@ window.changePago=async function(id,pago){
 window.onPagoChange=function(){
   const v=document.getElementById('f-pago').value;
   document.getElementById('abono-field').style.display = v==='abonado' ? 'block' : 'none';
+  updateFormTotals();
+};
+
+window.updateFormTotals=function(){
+  let total=0;
+  selectedFlavors.forEach(f=>{ const q=parseInt(document.getElementById('qty-'+f)?.value)||0; total += q*(Number(prices[f])||0); });
+  const elT=document.getElementById('form-total');
+  if(elT) elT.textContent=fmtMoney(total);
+  const pago=document.getElementById('f-pago').value;
+  const restaRow=document.getElementById('form-resta-row');
+  if(pago==='abonado'){
+    const abono=parseFloat(document.getElementById('f-abono').value)||0;
+    document.getElementById('form-resta').textContent=fmtMoney(Math.max(total-abono,0));
+    restaRow.style.display='flex';
+  } else {
+    restaRow.style.display='none';
+  }
 };
 
 function fmtMoney(n){ return '$'+(Number(n)||0).toLocaleString('es-MX'); }
@@ -805,8 +832,9 @@ function buildQtyInputs(){
   document.getElementById('qty-inputs').innerHTML=[...selectedFlavors].map(f=>`
     <div class="qty-row">
       <span class="qty-label">${f}</span>
-      <input class="qty-input" type="number" min="1" data-f="${f}" id="qty-${f}" placeholder="0" value="${prev[f]||''}">
+      <input class="qty-input" type="number" min="1" data-f="${f}" id="qty-${f}" placeholder="0" value="${prev[f]||''}" oninput="updateFormTotals()">
     </div>`).join('');
+  updateFormTotals();
 }
 
 window.openModal=function(id=null){
@@ -838,7 +866,7 @@ window.openModal=function(id=null){
   buildFlavorChecks();
   if(id){
     const o=orders.find(x=>x.id===id);
-    if(o) setTimeout(()=>{ Object.entries(o.sabores).forEach(([f,q])=>{ const el=document.getElementById('qty-'+f); if(el) el.value=q; }); },0);
+    if(o) setTimeout(()=>{ Object.entries(o.sabores).forEach(([f,q])=>{ const el=document.getElementById('qty-'+f); if(el) el.value=q; }); updateFormTotals(); },0);
   }
   document.getElementById('modal-overlay').classList.add('open');
 };

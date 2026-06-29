@@ -1,4 +1,4 @@
-const CACHE_NAME = 'emboobate-cache-v12';
+const CACHE_NAME = 'emboobate-cache-v13';
 const ASSETS = [
   './embobate.html',
   './manifest.json',
