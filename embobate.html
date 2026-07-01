@@ -18,6 +18,8 @@
     background: #F4F3EF;
     color: #1A1A18;
     padding: 24px;
+    padding-bottom: 40vh;
+    min-height: 100vh;
   }
   .container { max-width: 1100px; margin: 0 auto; }
 
@@ -583,12 +585,22 @@ window.toggleKebab=function(ev,id){
   closeAllKebabs();
   if(wasOpen) return;
   const r=ev.currentTarget.getBoundingClientRect();
-  menu.style.top=(r.bottom+4)+'px';
-  // alinear el borde derecho del menú con el botón
-  let left=r.right-190;
-  if(left<8) left=8;
-  menu.style.left=left+'px';
+  // Mostrar primero para poder medir su alto real
   menu.classList.add('open');
+  const mh=menu.offsetHeight;
+  const mw=menu.offsetWidth||190;
+  const vh=window.innerHeight;
+  const spaceBelow=vh-r.bottom;
+  // Si no cabe abajo pero sí arriba, abrir hacia arriba
+  let top=(spaceBelow<mh+12 && r.top>spaceBelow) ? (r.top-mh-4) : (r.bottom+4);
+  // Mantener siempre dentro de la pantalla
+  if(top+mh>vh-8) top=vh-8-mh;
+  if(top<8) top=8;
+  // Alinear el borde derecho del menú con el botón
+  let left=r.right-mw;
+  if(left<8) left=8;
+  menu.style.top=top+'px';
+  menu.style.left=left+'px';
 };
 function closeAllKebabs(){
   document.querySelectorAll('.kebab-menu.open').forEach(m=>m.classList.remove('open'));
