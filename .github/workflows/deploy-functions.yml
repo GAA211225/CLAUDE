@@ -46,4 +46,4 @@ jobs:
         working-directory: functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx firebase-tools@latest deploy --only functions --project emboobate-cd9c1 --non-interactive
+        run: npx firebase-tools@latest deploy --only functions --project emboobate-cd9c1 --non-interactive --force
