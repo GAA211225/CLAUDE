@@ -1,0 +1,22 @@
+name: Suscribir WABA a la app
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  subscribe:
+    runs-on: ubuntu-latest
+    env:
+      WABA_ID: '1455529606331122'
+      WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+    steps:
+      - name: Suscribir app a la WABA
+        run: |
+          echo "===== POST subscribed_apps ====="
+          curl -sS -X POST "https://graph.facebook.com/v21.0/${WABA_ID}/subscribed_apps" \
+            -H "Authorization: Bearer ${WHATSAPP_TOKEN}" | tee /tmp/sub.json
+          echo ""
+          echo "===== GET subscribed_apps (verificación) ====="
+          curl -sS "https://graph.facebook.com/v21.0/${WABA_ID}/subscribed_apps" \
+            -H "Authorization: Bearer ${WHATSAPP_TOKEN}"
+          echo ""
