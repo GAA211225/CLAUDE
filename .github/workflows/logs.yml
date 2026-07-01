@@ -1,0 +1,26 @@
+name: Ver logs del webhook
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Crear credenciales
+        run: echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Autenticar gcloud
+        run: |
+          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/sa.json"
+          gcloud config set project emboobate-cd9c1
+
+      - name: Leer logs recientes de la function
+        run: |
+          echo "===== gcloud functions logs (gen2) ====="
+          gcloud functions logs read whatsapp --region=us-central1 --gen2 --limit=60 || true
+          echo ""
+          echo "===== Cloud Run logs (última hora) ====="
+          gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="whatsapp"' --limit=60 --freshness=2h --format='value(timestamp, textPayload, jsonPayload.message)' || true
