@@ -63,6 +63,18 @@
   .precio-input-wrap input { border: none; outline: none; padding: 10px 6px; width: 100%; font-size: 14px; font-weight: 600; background: transparent; }
   .importe-val { font-weight: 700; font-size: 14px; }
 
+  .niveles-names { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .nivel-name-field { display: flex; flex-direction: column; gap: 5px; }
+  .nivel-name-field label { font-size: 11px; font-weight: 700; color: #6B6A65; text-transform: uppercase; letter-spacing: 0.04em; }
+  .nivel-name-field input { border: 1px solid #DCDAD2; border-radius: 8px; padding: 9px 10px; font-size: 14px; font-weight: 700; background: #fff; outline: none; }
+  .nivel-name-field input:focus { border-color: #1A1A18; box-shadow: 0 0 0 3px rgba(26,26,24,0.10); }
+  .precios-table-wrap { overflow-x: auto; }
+  .precios-table { width: 100%; border-collapse: collapse; }
+  .precios-table th { text-align: left; font-size: 12px; font-weight: 800; color: #1A1A18; padding: 8px 10px; border-bottom: 2px solid #E5E3DB; white-space: nowrap; }
+  .precios-table td { padding: 7px 10px; vertical-align: middle; }
+  .precios-table td.precio-label { font-weight: 700; white-space: nowrap; }
+  .precios-table .precio-input-wrap { min-width: 90px; }
+
   .lotes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
   .lote-card { border: 1px solid #E5E3DB; border-radius: 12px; padding: 14px; background: #FBFAF7; }
   .lote-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
@@ -376,6 +388,10 @@
             <option value="cambio">Por caducar / cambio</option>
           </select>
         </div>
+        <div class="form-field">
+          <label class="form-label">Nivel de precio</label>
+          <select class="form-select" id="f-nivel" onchange="updateFormTotals()"></select>
+        </div>
       </div>
       <div class="form-field" style="margin-top:12px;">
         <label class="form-label">Sabores</label>
@@ -601,7 +617,13 @@ function persistTicketQueue(t){ return addDoc(ticketsCol, t); }
 function persistClientUpdate(id, c){ return updateDoc(doc(db,"clients",id), c); }
 
 function totalPzas(s){ return Object.values(s).reduce((a,b)=>a+b,0); }
-function orderTotal(o){ return Object.entries(o.sabores||{}).reduce((sum,[f,q])=>sum+q*(Number(prices[f])||0),0); }
+// Nombres de los 3 niveles de precio (editables desde la pestaña Precios)
+function nivelNombres(){ const nn=prices.nivelNombres; return (Array.isArray(nn)&&nn.length===3)?nn:['Nivel 1','Nivel 2','Nivel 3']; }
+// Normaliza el precio de un sabor a {n1,n2,n3}; soporta el formato viejo (un solo número)
+function priceObj(f){ const p=prices[f]; if(p==null) return {n1:'',n2:'',n3:''}; if(typeof p==='number') return {n1:p,n2:p,n3:p}; return {n1:p.n1??'',n2:p.n2??'',n3:p.n3??''}; }
+// Precio de un sabor para un nivel dado (1,2,3)
+function priceOf(f, nivel){ const p=prices[f]; if(p==null) return 0; if(typeof p==='number') return p; const key='n'+(nivel||1); return Number(p[key]!=null?p[key]:p.n1)||0; }
+function orderTotal(o){ return Object.entries(o.sabores||{}).reduce((sum,[f,q])=>sum+q*priceOf(f, o.nivel),0); }
 function saldoRestante(o){
   const total=orderTotal(o);
   if((o.pago||'pendiente')==='saldado') return 0;
@@ -699,8 +721,10 @@ window.onPagoChange=function(){
 };
 
 window.updateFormTotals=function(){
+  const nivelEl=document.getElementById('f-nivel');
+  const nivel=nivelEl?parseInt(nivelEl.value)||1:1;
   let total=0;
-  selectedFlavors.forEach(f=>{ const q=parseInt(document.getElementById('qty-'+f)?.value)||0; total += q*(Number(prices[f])||0); });
+  selectedFlavors.forEach(f=>{ const q=parseInt(document.getElementById('qty-'+f)?.value)||0; total += q*priceOf(f, nivel); });
   const elT=document.getElementById('form-total');
   if(elT) elT.textContent=fmtMoney(total);
   const pago=document.getElementById('f-pago').value;
@@ -930,19 +954,36 @@ window.saveLotes=async function(){
 function renderPrecios(){
   const el=document.getElementById('precios-list');
   if(!el) return;
-  el.innerHTML=FLAVORS.map(f=>`
-    <div class="precio-row">
-      <span class="precio-label">${f}</span>
-      <div class="precio-input-wrap">
-        <span>$</span>
-        <input type="number" min="0" step="1" id="precio-${f}" value="${prices[f]!=null?prices[f]:''}" placeholder="0">
-      </div>
-    </div>`).join('');
+  const nombres=nivelNombres();
+  el.innerHTML=`
+    <div class="niveles-names">
+      ${[0,1,2].map(i=>`<div class="nivel-name-field"><label>Nombre del nivel ${i+1}</label><input type="text" id="nivel-nombre-${i}" value="${nombres[i]}" placeholder="Nivel ${i+1}" oninput="refreshNivelHeaders()"></div>`).join('')}
+    </div>
+    <div class="precios-table-wrap">
+      <table class="precios-table">
+        <thead><tr><th>Sabor</th><th id="nivel-th-0">${nombres[0]}</th><th id="nivel-th-1">${nombres[1]}</th><th id="nivel-th-2">${nombres[2]}</th></tr></thead>
+        <tbody>
+          ${FLAVORS.map(f=>{ const p=priceObj(f); return `<tr>
+            <td class="precio-label">${f}</td>
+            ${[1,2,3].map(n=>`<td><div class="precio-input-wrap"><span>$</span><input type="number" min="0" step="1" id="precio-${f}-${n}" value="${p['n'+n]!=null?p['n'+n]:''}" placeholder="0"></div></td>`).join('')}
+          </tr>`;}).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
+
+window.refreshNivelHeaders=function(){
+  [0,1,2].forEach(i=>{ const v=document.getElementById('nivel-nombre-'+i).value.trim()||('Nivel '+(i+1)); const th=document.getElementById('nivel-th-'+i); if(th) th.textContent=v; });
+};
 
 window.savePrices=async function(){
   const payload={};
-  FLAVORS.forEach(f=>{ payload[f]=parseFloat(document.getElementById('precio-'+f).value)||0; });
+  payload.nivelNombres=[0,1,2].map(i=>document.getElementById('nivel-nombre-'+i).value.trim()||('Nivel '+(i+1)));
+  FLAVORS.forEach(f=>{ payload[f]={
+    n1:parseFloat(document.getElementById('precio-'+f+'-1').value)||0,
+    n2:parseFloat(document.getElementById('precio-'+f+'-2').value)||0,
+    n3:parseFloat(document.getElementById('precio-'+f+'-3').value)||0
+  }; });
   const msg=document.getElementById('precios-msg');
   try{
     await setDoc(pricesDocRef, payload);
@@ -960,9 +1001,9 @@ function buildClientList(filter=''){
   const list=document.getElementById('client-list');
   const q=filter.trim().toUpperCase();
   const filtered=clients.filter(c=>!q||c.name.includes(q));
-  let html=filtered.map(c=>`<div class="client-option" onclick="selectClient('${c.name.replace(/'/g,"\\'")}','${(c.phone||'').replace(/'/g,"\\'")}')"><i class="ti ti-user" style="font-size:14px;color:#6B6A65;" aria-hidden="true"></i>${c.name}</div>`).join('');
+  let html=filtered.map(c=>`<div class="client-option" onclick="selectClient('${c.name.replace(/'/g,"\\'")}','${(c.phone||'').replace(/'/g,"\\'")}',${c.nivel||1})"><i class="ti ti-user" style="font-size:14px;color:#6B6A65;" aria-hidden="true"></i>${c.name}</div>`).join('');
   if(q&&!clients.some(c=>c.name===q)){
-    html+=`<div class="client-option new-opt" onclick="selectClient('${q.replace(/'/g,"\\'")}','')"><i class="ti ti-plus" style="font-size:14px;" aria-hidden="true"></i>Agregar "${q}" como nuevo cliente</div>`;
+    html+=`<div class="client-option new-opt" onclick="selectClient('${q.replace(/'/g,"\\'")}','',1)"><i class="ti ti-plus" style="font-size:14px;" aria-hidden="true"></i>Agregar "${q}" como nuevo cliente</div>`;
   }
   list.innerHTML=html||`<div class="client-option" style="color:#6B6A65;">Sin resultados</div>`;
 }
@@ -971,7 +1012,16 @@ window.openClientList=function(){ clientListOpen=true; buildClientList(document.
 window.closeClientList=function(){ clientListOpen=false; document.getElementById('client-list').classList.remove('open'); };
 window.toggleClientList=function(){ if(clientListOpen) closeClientList(); else openClientList(); };
 window.filterClients=function(){ buildClientList(document.getElementById('f-cliente-text').value); if(!clientListOpen) openClientList(); };
-window.selectClient=function(name, phone){ document.getElementById('f-cliente-text').value=name; if(phone) document.getElementById('f-telefono').value=phone; closeClientList(); };
+window.selectClient=function(name, phone, nivel){ document.getElementById('f-cliente-text').value=name; if(phone) document.getElementById('f-telefono').value=phone; fillNivelOptions(nivel||1); updateFormTotals(); closeClientList(); };
+
+// Llena el selector de nivel de precio con los nombres configurados
+function fillNivelOptions(sel){
+  const el=document.getElementById('f-nivel');
+  if(!el) return;
+  const nombres=nivelNombres();
+  const cur=sel||1;
+  el.innerHTML=[1,2,3].map(n=>`<option value="${n}"${n===cur?' selected':''}>${nombres[n-1]}</option>`).join('');
+}
 
 document.addEventListener('click',function(e){
   const wrap=document.getElementById('client-wrap');
@@ -1020,11 +1070,13 @@ window.openModal=function(id=null){
   document.getElementById('f-abono').value='';
   document.getElementById('f-elab').value='';
   document.getElementById('f-cambio').value='';
+  fillNivelOptions(1);
   if(id){
     const o=orders.find(x=>x.id===id);
     if(o){
       document.getElementById('f-cliente-text').value=o.cliente;
       document.getElementById('f-telefono').value=o.telefono||'';
+      fillNivelOptions(o.nivel||1);
       document.getElementById('f-fecha-pedido').value=o.fecha;
       document.getElementById('f-estatus').value=o.estatus;
       document.getElementById('f-pago').value=o.pago||'pendiente';
@@ -1053,6 +1105,7 @@ window.saveOrder=async function(){
   const estatus=document.getElementById('f-estatus').value;
   const pago=document.getElementById('f-pago').value;
   const abono=pago==='abonado' ? (parseFloat(document.getElementById('f-abono').value)||0) : 0;
+  const nivel=parseInt(document.getElementById('f-nivel').value)||1;
   const elab=document.getElementById('f-elab').value;
   const cambio=document.getElementById('f-cambio').value;
   const sabores={};
@@ -1061,10 +1114,16 @@ window.saveOrder=async function(){
   if(pago==='abonado' && abono<=0){ alert('Escribe el monto abonado.'); return; }
   try{
     const existingClient=clients.find(c=>c.name===cliente);
-    if(!existingClient) await persistClientNew({name:cliente, phone:telefono});
-    else if(telefono && telefono!==existingClient.phone) await persistClientUpdate(existingClient.id,{phone:telefono});
+    if(!existingClient){
+      await persistClientNew({name:cliente, phone:telefono, nivel});
+    } else {
+      const upd={};
+      if(telefono && telefono!==existingClient.phone) upd.phone=telefono;
+      if((existingClient.nivel||1)!==nivel) upd.nivel=nivel;
+      if(Object.keys(upd).length) await persistClientUpdate(existingClient.id, upd);
+    }
 
-    const payload={cliente,telefono,fecha,sabores,estatus,pago,abono,elab,cambio};
+    const payload={cliente,telefono,fecha,sabores,estatus,pago,abono,nivel,elab,cambio};
     if(editId){
       await persistOrderUpdate(editId, payload);
     } else {
@@ -1148,7 +1207,7 @@ function buildTicketPDF(o){
   docu.text(`Fecha pedido: ${fmtDate(o.fecha)}`,14,y); y+=14;
   docu.text('-------------------------------',113,y,{align:'center'}); y+=14;
   Object.entries(o.sabores||{}).forEach(([f,q])=>{
-    const sub=q*(Number(prices[f])||0);
+    const sub=q*priceOf(f, o.nivel);
     docu.text(`${f} x${q}`,14,y);
     docu.text(fmtMoney(sub),212,y,{align:'right'});
     y+=14;
