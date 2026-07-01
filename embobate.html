@@ -62,6 +62,24 @@
   .precio-input-wrap span { font-weight: 700; color: #6B6A65; }
   .precio-input-wrap input { border: none; outline: none; padding: 10px 6px; width: 100%; font-size: 14px; font-weight: 600; background: transparent; }
   .importe-val { font-weight: 700; font-size: 14px; }
+
+  .lotes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .lote-card { border: 1px solid #E5E3DB; border-radius: 12px; padding: 14px; background: #FBFAF7; }
+  .lote-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .lote-restante { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 20px; white-space: nowrap; }
+  .lote-restante.ok { background: #E7F1DC; color: #3B6D11; }
+  .lote-restante.low { background: #FAEEDA; color: #854F0B; }
+  .lote-restante.out { background: #FAECE7; color: #993C1D; }
+  .lote-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 9px; }
+  .lote-field label { font-size: 11px; font-weight: 700; color: #6B6A65; text-transform: uppercase; letter-spacing: 0.04em; }
+  .lote-field input { border: 1px solid #DCDAD2; border-radius: 8px; padding: 9px 10px; font-size: 14px; font-weight: 600; background: #fff; outline: none; width: 100%; }
+  .lote-field input:focus { border-color: #1A1A18; box-shadow: 0 0 0 3px rgba(26,26,24,0.10); }
+  .lote-cambio { font-size: 12px; font-weight: 700; color: #1A1A18; margin-top: 4px; }
+  .lote-cambio b { color: #993C1D; }
+
+  .cambio-banner { position: relative; background: #FAECE7; border: 1px solid #F0C9BB; color: #7A2E15; border-radius: 12px; padding: 14px 40px 14px 16px; margin-bottom: 20px; font-size: 13px; font-weight: 600; line-height: 1.5; }
+  .cambio-banner .banner-title { display: flex; align-items: center; gap: 7px; font-weight: 800; margin-bottom: 4px; }
+  .cambio-banner .banner-close { position: absolute; top: 10px; right: 12px; border: none; background: none; color: #993C1D; font-size: 16px; font-weight: 800; cursor: pointer; line-height: 1; }
   .resta-val { font-size: 11px; font-weight: 700; color: #993C1D; }
   .form-total-box { margin-top: 14px; background: #F7F6F2; border: 1px solid #E5E3DB; border-radius: 10px; padding: 12px 14px; }
   .form-total-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; }
@@ -232,6 +250,7 @@
   </div>
 
   <div id="view-pedidos">
+  <div class="cambio-banner" id="cambio-banner" style="display:none;"></div>
   <div class="stats" id="stats"></div>
 
   <div class="section-header">
@@ -300,6 +319,18 @@
       <div style="display:flex;gap:8px;align-items:center;margin-top:18px;">
         <button class="btn btn-primary" onclick="savePrices()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar precios</button>
         <span id="precios-msg" style="font-size:13px;font-weight:700;color:#3B6D11;"></span>
+      </div>
+    </div>
+
+    <div class="section-header" style="margin-top:28px;">
+      <div class="section-title"><i class="ti ti-flask" style="font-size:18px;color:#1A1A18;" aria-hidden="true"></i> Lote y existencias</div>
+    </div>
+    <div class="table-card" style="padding:18px;">
+      <p style="font-size:13px;color:#6B6A65;font-weight:600;margin-bottom:16px;">Define, por sabor, la fecha de elaboración del lote y en cuántas semanas hay que cambiar el agua. Al crear un pedido, la fecha de cambio se llena sola. También registra cuántas botellas hiciste: se van restando con cada pedido y te avisa cuando se están agotando.</p>
+      <div id="lotes-list" class="lotes-grid"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:18px;">
+        <button class="btn btn-primary" onclick="saveLotes()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar lotes</button>
+        <span id="lotes-msg" style="font-size:13px;font-weight:700;color:#3B6D11;"></span>
       </div>
     </div>
   </div>
@@ -432,6 +463,7 @@ const ordersCol = collection(db, "orders");
 const clientsCol = collection(db, "clients");
 const accessDocRef = doc(db, "config", "access");
 const pricesDocRef = doc(db, "config", "prices");
+const lotesDocRef = doc(db, "config", "lotes");
 const ticketsCol = collection(db, "ticketsQueue");
 
 window.FLAVORS = ['Piña','Jamaica','Horchata','Taro','Chai','Otro'];
@@ -440,6 +472,7 @@ window.FLAVOR_CLASS = {Piña:'pina',Jamaica:'jamaica',Horchata:'horchata',Taro:'
 window.orders = [];
 window.clients = [];
 window.prices = {};
+window.lotes = {};
 let currentTab = 'todos';
 let editId = null;
 let selectedFlavors = new Set();
@@ -513,6 +546,11 @@ onSnapshot(pricesDocRef, (snap)=>{
   renderTable();
 }, (err)=>{ console.error(err); });
 
+onSnapshot(lotesDocRef, (snap)=>{
+  window.lotes = (snap.exists() && snap.data()) || {};
+  renderLotes();
+}, (err)=>{ console.error(err); });
+
 async function checkAccessCode(){
   const input = document.getElementById('gate-code').value.trim();
   const errEl = document.getElementById('gate-error');
@@ -572,6 +610,27 @@ function saldoRestante(o){
 }
 function fmtDate(s){ if(!s) return '—'; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
 function daysLeft(s){ if(!s) return null; const now=new Date(); now.setHours(0,0,0,0); const [y,m,d]=s.split('-').map(Number); const dd=new Date(y,m-1,d); dd.setHours(0,0,0,0); return Math.round((dd-now)/86400000); }
+function addDays(s, days){ if(!s) return ''; const [y,m,d]=s.split('-').map(Number); const dd=new Date(y,m-1,d); dd.setDate(dd.getDate()+days); const mm=String(dd.getMonth()+1).padStart(2,'0'); const dy=String(dd.getDate()).padStart(2,'0'); return `${dd.getFullYear()}-${mm}-${dy}`; }
+// Fecha de "cambio de aguas" de un sabor, calculada desde su lote (elaboración + semanas)
+function batchCambio(f){ const b=lotes[f]; if(!b||!b.elab||!b.semanas) return ''; return addDays(b.elab, b.semanas*7); }
+// Botellas consumidas de un sabor: suma de los pedidos del lote actual (fecha >= elaboración)
+function consumedFor(f){
+  const since=(lotes[f]&&lotes[f].elab)||null;
+  return orders.reduce((sum,o)=>{
+    if(since && o.fecha && o.fecha<since) return sum;
+    return sum + ((o.sabores&&o.sabores[f])||0);
+  },0);
+}
+function remainingFor(f){ const hechas=(lotes[f]&&Number(lotes[f].hechas))||0; return hechas - consumedFor(f); }
+// Estado de existencias: 'out' agotado, 'low' por terminarse (<=15% del lote), 'ok'
+function loteEstado(f){
+  const hechas=(lotes[f]&&Number(lotes[f].hechas))||0;
+  if(!hechas) return null;
+  const rem=remainingFor(f);
+  if(rem<=0) return 'out';
+  if(rem<=Math.max(3, Math.ceil(hechas*0.15))) return 'low';
+  return 'ok';
+}
 
 const STATUS_LABEL={pendiente:'Pendiente','en ruta':'En ruta',entregado:'Entregado',cambio:'Por caducar'};
 const STATUS_COLOR={pendiente:'#E0A82E','en ruta':'#185FA5',entregado:'#3B6D11',cambio:'#C0392B'};
@@ -779,14 +838,93 @@ function renderCaducidad(){
   </tr>`).join('');
 }
 
-function render(){ renderStats(); renderTable(); renderCaducidad(); }
+function render(){ renderStats(); renderTable(); renderCaducidad(); checkCambioAlerts(); }
+
+// Aviso dentro de la app cuando se acercan las fechas de cambio de aguas
+let alertedIds = new Set();
+let bannerDismissed = false;
+window.dismissCambioBanner=function(){ bannerDismissed=true; const b=document.getElementById('cambio-banner'); if(b) b.style.display='none'; };
+function checkCambioAlerts(){
+  const banner=document.getElementById('cambio-banner');
+  if(!banner) return;
+  const soon=orders.filter(o=>{ const dl=daysLeft(o.cambio); return dl!==null && dl<=3 && o.estatus!=='entregado'; })
+    .sort((a,b)=>(daysLeft(a.cambio))-(daysLeft(b.cambio)));
+  if(!soon.length){ banner.style.display='none'; bannerDismissed=false; return; }
+  if(!bannerDismissed){
+    banner.style.display='block';
+    const items=soon.map(o=>{ const dl=daysLeft(o.cambio); const tag=dl<0?'vencido':dl===0?'hoy':dl+'d'; return `<div>• <b>${o.cliente}</b> — cambiar antes de ${fmtDate(o.cambio)} <span style="opacity:.8;">(${tag})</span></div>`; }).join('');
+    banner.innerHTML=`<div class="banner-title"><i class="ti ti-bell-ringing" aria-hidden="true"></i> ${soon.length} pedido(s) con cambio de aguas próximo</div>${items}<button class="banner-close" onclick="dismissCambioBanner()" aria-label="Cerrar">✕</button>`;
+  }
+  // Notificación del sistema, una vez por pedido por sesión
+  if('Notification' in window && Notification.permission==='granted'){
+    soon.forEach(o=>{
+      if(alertedIds.has(o.id)) return;
+      alertedIds.add(o.id);
+      const dl=daysLeft(o.cambio);
+      try{ new Notification('Cambio de aguas próximo', { body:`${o.cliente}: cambiar antes de ${fmtDate(o.cambio)}${dl<0?' (vencido)':dl===0?' (hoy)':' ('+dl+' días)'}`, icon:'icon-192.png' }); }catch(e){}
+    });
+  }
+}
 
 window.showView=function(view){
   document.getElementById('view-pedidos').style.display = view==='pedidos' ? 'block' : 'none';
   document.getElementById('view-precios').style.display = view==='precios' ? 'block' : 'none';
   document.getElementById('nav-pedidos').classList.toggle('active', view==='pedidos');
   document.getElementById('nav-precios').classList.toggle('active', view==='precios');
-  if(view==='precios') renderPrecios();
+  if(view==='precios'){ renderPrecios(); renderLotes(); }
+};
+
+function renderLotes(){
+  const el=document.getElementById('lotes-list');
+  if(!el) return;
+  el.innerHTML=FLAVORS.map(f=>{
+    const b=lotes[f]||{};
+    const est=loteEstado(f);
+    const rem=remainingFor(f);
+    const hechas=Number(b.hechas)||0;
+    let badge='';
+    if(est==='out') badge=`<span class="lote-restante out">Agotado</span>`;
+    else if(est==='low') badge=`<span class="lote-restante low">Quedan ${rem} · por terminarse</span>`;
+    else if(est==='ok') badge=`<span class="lote-restante ok">Quedan ${rem} de ${hechas}</span>`;
+    const cambio=batchCambio(f);
+    return `<div class="lote-card">
+      <div class="lote-head"><span class="fpill ${FLAVOR_CLASS[f]||''}">${f}</span>${badge}</div>
+      <div class="lote-field"><label>Fecha de elaboración</label><input type="date" id="lote-elab-${f}" value="${b.elab||''}" oninput="updateLotePreview('${f}')"></div>
+      <div class="lote-field"><label>Semanas para cambio</label><input type="number" min="0" step="1" id="lote-sem-${f}" value="${b.semanas!=null?b.semanas:''}" placeholder="Ej. 3" oninput="updateLotePreview('${f}')"></div>
+      <div class="lote-field"><label>Botellas hechas (lote)</label><input type="number" min="0" step="1" id="lote-hechas-${f}" value="${b.hechas!=null?b.hechas:''}" placeholder="0"></div>
+      <div class="lote-cambio" id="lote-cambio-${f}">Cambio antes de: <b>${cambio?fmtDate(cambio):'—'}</b></div>
+    </div>`;
+  }).join('');
+}
+
+window.updateLotePreview=function(f){
+  const elab=document.getElementById('lote-elab-'+f).value;
+  const sem=parseInt(document.getElementById('lote-sem-'+f).value)||0;
+  const out=document.getElementById('lote-cambio-'+f);
+  if(!out) return;
+  const cambio=(elab&&sem>0)?addDays(elab, sem*7):'';
+  out.innerHTML='Cambio antes de: <b>'+(cambio?fmtDate(cambio):'—')+'</b>';
+};
+
+window.saveLotes=async function(){
+  const payload={};
+  FLAVORS.forEach(f=>{
+    const elab=document.getElementById('lote-elab-'+f).value||'';
+    const sem=parseInt(document.getElementById('lote-sem-'+f).value)||0;
+    const hechas=parseInt(document.getElementById('lote-hechas-'+f).value)||0;
+    payload[f]={elab, semanas:sem, hechas};
+  });
+  const msg=document.getElementById('lotes-msg');
+  msg.style.color='#3B6D11';
+  try{
+    await setDoc(lotesDocRef, payload);
+    msg.textContent='✓ Lotes guardados';
+    setTimeout(()=>{ msg.textContent=''; },2500);
+  }catch(e){
+    console.error(e);
+    msg.style.color='#C0392B';
+    msg.textContent='No se pudo guardar. Revisa tu conexión.';
+  }
 };
 
 function renderPrecios(){
@@ -844,7 +982,22 @@ function buildFlavorChecks(){
   document.getElementById('flavor-checks').innerHTML=FLAVORS.map(f=>`<div class="flavor-opt${selectedFlavors.has(f)?' checked':''}" onclick="toggleFlavor('${f}')">${f}</div>`).join('');
   buildQtyInputs();
 }
-window.toggleFlavor=function(f){ if(selectedFlavors.has(f)) selectedFlavors.delete(f); else selectedFlavors.add(f); buildFlavorChecks(); };
+window.toggleFlavor=function(f){ if(selectedFlavors.has(f)) selectedFlavors.delete(f); else selectedFlavors.add(f); buildFlavorChecks(); autofillCaducidad(); };
+
+// Llena solas las fechas de elaboración y cambio según el lote de los sabores elegidos.
+// Usa la fecha de cambio más próxima entre los sabores del pedido. Solo en pedidos nuevos.
+function autofillCaducidad(){
+  if(editId) return;
+  let bestCambio='', bestElab='';
+  selectedFlavors.forEach(f=>{
+    const b=lotes[f];
+    if(!b||!b.elab||!b.semanas) return;
+    const camb=addDays(b.elab, b.semanas*7);
+    if(!bestCambio || camb<bestCambio){ bestCambio=camb; bestElab=b.elab; }
+  });
+  if(bestElab) document.getElementById('f-elab').value=bestElab;
+  if(bestCambio) document.getElementById('f-cambio').value=bestCambio;
+}
 function buildQtyInputs(){
   const prev={};
   document.querySelectorAll('.qty-input').forEach(el=>{ prev[el.dataset.f]=el.value; });
