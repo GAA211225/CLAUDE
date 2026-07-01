@@ -20,6 +20,7 @@ const FLAVOR_SYNONYMS = {
   'Piña': ['pina', 'pinia', 'pin'],
   'Jamaica': ['jamaica'],
   'Horchata': ['horchata', 'orchata'],
+  'Tamarindo': ['tamarindo', 'tamarind'],
   'Taro': ['taro'],
   'Chai': ['chai', 'chay'],
 };

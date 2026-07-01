@@ -129,6 +129,7 @@
   .fpill.pina { background: #FAEEDA; color: #854F0B; }
   .fpill.jamaica { background: #FBEAF0; color: #993556; }
   .fpill.horchata { background: #EAF3DE; color: #3B6D11; }
+  .fpill.tamarindo { background: #F5E4D3; color: #8A4B0A; }
   .fpill.taro { background: #EEEDFE; color: #534AB7; }
   .fpill.chai { background: #FAEEDA; color: #633806; }
   .fpill.otro { background: #F1EFE8; color: #5F5E5A; }
@@ -482,8 +483,8 @@ const pricesDocRef = doc(db, "config", "prices");
 const lotesDocRef = doc(db, "config", "lotes");
 const ticketsCol = collection(db, "ticketsQueue");
 
-window.FLAVORS = ['Piña','Jamaica','Horchata','Taro','Chai','Otro'];
-window.FLAVOR_CLASS = {Piña:'pina',Jamaica:'jamaica',Horchata:'horchata',Taro:'taro',Chai:'chai',Otro:'otro'};
+window.FLAVORS = ['Piña','Jamaica','Horchata','Tamarindo','Taro','Chai','Otro'];
+window.FLAVOR_CLASS = {Piña:'pina',Jamaica:'jamaica',Horchata:'horchata',Tamarindo:'tamarindo',Taro:'taro',Chai:'chai',Otro:'otro'};
 
 window.orders = [];
 window.clients = [];
