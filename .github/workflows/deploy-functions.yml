@@ -1,0 +1,49 @@
+name: Desplegar webhook (Cloud Function)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias de la function
+        working-directory: functions
+        run: npm install
+
+      - name: Crear archivo de credenciales de Firebase
+        run: echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Crear .env de la function (variables en runtime)
+        working-directory: functions
+        run: |
+          {
+            echo "WHATSAPP_TOKEN=${WHATSAPP_TOKEN}"
+            echo "WHATSAPP_PHONE_ID=${WHATSAPP_PHONE_ID}"
+            echo "WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}"
+            echo "OWNER_PHONE=${OWNER_PHONE}"
+          } > .env
+        env:
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          OWNER_PHONE: ${{ secrets.OWNER_PHONE }}
+
+      - name: Desplegar
+        working-directory: functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx firebase-tools@latest deploy --only functions --project emboobate-cd9c1 --non-interactive
