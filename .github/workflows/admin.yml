@@ -1,0 +1,32 @@
+name: Admin Firestore
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'read o add'
+        required: true
+        default: 'read'
+      clients_json:
+        description: 'JSON de clientes a agregar (solo para add)'
+        required: false
+        default: '[]'
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias
+        working-directory: notifier
+        run: npm install
+      - name: Ejecutar
+        working-directory: notifier
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ACTION: ${{ github.event.inputs.action }}
+          CLIENTS_JSON: ${{ github.event.inputs.clients_json }}
+        run: node admin.js
