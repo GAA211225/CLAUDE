@@ -14,9 +14,17 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const n = payload.notification || {};
+  const d = payload.data || {};
   self.registration.showNotification(n.title || 'Emboobate', {
     body: n.body || '',
-    icon: 'logo.png',
-    badge: 'logo.png'
+    icon: d.icon || 'logo.png',
+    badge: d.icon || 'logo.png',
+    data: { url: d.url || '' }
   });
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '';
+  if (url) event.waitUntil(clients.openWindow(url));
 });

@@ -59,9 +59,20 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fc;color:#1a
 .seg-btn{flex:1;padding:10px;border-radius:8px;border:1.5px solid #e5e7eb;background:#f3f4f6;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer;}
 .seg-btn.active{background:#185FA5;border-color:#185FA5;color:#fff;}
 .sazon{background:#FAECE7;border-radius:8px;padding:8px 10px;font-size:12px;color:#993C1D;margin-top:8px;line-height:1.5;}
+.frase-card{background:linear-gradient(135deg,#E1F5EE,#fff);border:1px solid #b7e4d3;border-left:4px solid #1D9E75;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.frase-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0F6E56;margin-bottom:6px;}
+.frase-texto{font-size:15px;font-weight:600;color:#0F6E56;font-style:italic;line-height:1.45;}
+.frase-btn{margin-top:10px;padding:8px 14px;border:1.5px solid #1D9E75;border-radius:20px;background:#fff;color:#0F6E56;font-size:12px;font-weight:700;cursor:pointer;}
+.frase-btn.on{background:#1D9E75;color:#fff;cursor:default;}
 </style>
 </head>
 <body>
+
+<div class="frase-card">
+  <p class="frase-label">💪 Frase del día</p>
+  <p id="frase-texto" class="frase-texto">“La disciplina pesa gramos; el arrepentimiento pesa toneladas.”</p>
+  <button id="frase-btn" class="frase-btn" onclick="activarFrase()">🔔 Recibir la frase cada día a las 6:00 am</button>
+</div>
 
 <div id="install-bar" style="display:none;justify-content:space-between;align-items:center;gap:10px;background:#E1F5EE;border:1.5px solid #1D9E75;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
   <span style="font-size:13px;color:#0F6E56;font-weight:600;">📲 Instala esta página como app en tu teléfono</span>
@@ -556,6 +567,13 @@ renderChips();
 setDia(tipoDia);
 saveD();
 
+/* ===== Frase del día ===== */
+function idxHoy(n){const d=new Date();return Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000)%n;}
+fetch('frases.json').then(function(r){return r.json();}).then(function(fr){
+ document.getElementById('frase-texto').textContent='“'+fr[idxHoy(fr.length)]+'”';
+}).catch(function(){});
+function activarFrase(){alert('Cargando... necesitas internet la primera vez. Intenta de nuevo en unos segundos.');}
+
 /* ===== PWA: instalación y offline ===== */
 if('serviceWorker' in navigator){
  navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e);});
@@ -571,6 +589,69 @@ function doInstall(){
  deferredPrompt.userChoice.then(function(){deferredPrompt=null;document.getElementById('install-bar').style.display='none';});
 }
 window.addEventListener('appinstalled',function(){document.getElementById('install-bar').style.display='none';});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyCjFyxrJsrcJx5QmHaL0p_eQaSB83PpaS4",
+  authDomain: "emboobate-cd9c1.firebaseapp.com",
+  projectId: "emboobate-cd9c1",
+  storageBucket: "emboobate-cd9c1.firebasestorage.app",
+  messagingSenderId: "572353552640",
+  appId: "1:572353552640:web:4704ef080c381b6ec7d3e5"
+});
+const db = getFirestore(app);
+const messaging = getMessaging(app);
+const VAPID_KEY = "BEJm4aVSkUMdvwc5eHLdGaayMcCvnt4hVoatcaqdAfgjt9oz0sAyyZhA6zKz4Cwb9qRDZ0OuYwURBr4Uu1QhIaA";
+
+async function registrarTokenFrase(){
+  const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './firebase-push/' });
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+  if(token){
+    await setDoc(doc(db, 'dietaTokens', token), { token, ua: navigator.userAgent, updated: Date.now() });
+  }
+  return token;
+}
+function marcarActivado(){
+  const b = document.getElementById('frase-btn');
+  b.textContent = '✅ Frase diaria activada — 6:00 am';
+  b.classList.add('on');
+  b.disabled = true;
+}
+window.activarFrase = async function(){
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){
+    alert('Este navegador no soporta notificaciones. En iPhone: primero agrega la app a la pantalla de inicio y ábrela desde ahí.');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if(perm !== 'granted'){
+    alert('Sin permiso no puedo enviarte la frase. Si cambias de opinión, actívalo en los ajustes del navegador.');
+    return;
+  }
+  try{
+    const t = await registrarTokenFrase();
+    if(t){ localStorage.setItem('fraseNotif','1'); marcarActivado(); }
+    else alert('No se pudo registrar el dispositivo. Intenta de nuevo.');
+  }catch(e){
+    alert('Error al activar: ' + e.message);
+  }
+};
+// Si ya activó antes, refresca el token en silencio y marca el botón
+if(('Notification' in window) && Notification.permission === 'granted' && localStorage.getItem('fraseNotif') === '1'){
+  marcarActivado();
+  registrarTokenFrase().catch(function(){});
+}
+// Si la app está abierta cuando llega la frase (primer plano)
+onMessage(messaging, function(payload){
+  const n = payload.notification || {};
+  navigator.serviceWorker.ready.then(function(reg){
+    reg.showNotification(n.title || '💪 Frase del día', { body: n.body || '', icon: 'dieta-icon-192.png' });
+  }).catch(function(){});
+});
 </script>
 </body>
 </html>
