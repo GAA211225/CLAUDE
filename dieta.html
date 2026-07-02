@@ -44,6 +44,15 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fc;color:#1a
 .have-row:last-child{border-bottom:none;}
 .buy-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;}
 .buy-row:last-child{border-bottom:none;}
+.chip{display:inline-block;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;margin:3px;user-select:none;}
+.chip.sel{background:#1D9E75;border-color:#1D9E75;color:#fff;}
+.qty-input{font-size:12px;padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;color:#1a1a2e;}
+.btn-main{width:100%;padding:13px;border:none;border-radius:10px;background:#1D9E75;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;}
+.btn-sec{padding:8px 14px;border:1.5px solid #1D9E75;border-radius:8px;background:#fff;color:#0F6E56;font-size:13px;font-weight:600;cursor:pointer;}
+.seg{display:flex;gap:6px;margin:12px 0 4px;}
+.seg-btn{flex:1;padding:10px;border-radius:8px;border:1.5px solid #e5e7eb;background:#f3f4f6;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer;}
+.seg-btn.active{background:#185FA5;border-color:#185FA5;color:#fff;}
+.sazon{background:#FAECE7;border-radius:8px;padding:8px 10px;font-size:12px;color:#993C1D;margin-top:8px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -54,6 +63,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fc;color:#1a
   <button class="nav-btn" onclick="show('gym')">🏋️ Día Gym</button>
   <button class="nav-btn" onclick="show('descanso')">😴 Descanso</button>
   <button class="nav-btn" onclick="show('lacteos')">🧀 Lácteos</button>
+  <button class="nav-btn" onclick="show('cocina')">🍳 Mi Cocina</button>
 </div>
 
 <!-- COMPRAS -->
@@ -289,14 +299,253 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8f9fc;color:#1a
   <div class="al"><strong>Ojo con el queso:</strong> Panela es el más bajo en calorías pero más de 60g/día suma grasa de forma notoria. Úsalo en porciones de 30g — del tamaño de tu pulgar.</div>
 </div>
 
+<!-- MI COCINA -->
+<div id="p-cocina" class="page">
+  <p class="sec-title">Mi cocina — arma tus comidas con lo que tienes</p>
+  <div class="info"><strong>¿Cómo funciona?</strong> Marca los ingredientes que tienes hoy, anota cuánto tienes de cada uno, elige si es día de gym o descanso, y te armo las comidas del día con tips de sazón. Tu despensa se guarda en el teléfono automáticamente.</div>
+  <div id="cat-containers"></div>
+  <div class="card">
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;">➕ Agregar otro ingrediente</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <input id="cust-name" class="qty-input" style="flex:1;min-width:130px;" placeholder="Ej. calabaza, tilapia...">
+      <select id="cust-cat" class="qty-input">
+        <option value="proteina">🥩 Proteína</option>
+        <option value="carbo">🌾 Carbohidrato</option>
+        <option value="verdura">🥦 Verdura</option>
+        <option value="fruta">🍎 Fruta</option>
+        <option value="extra">🥑 Extra</option>
+      </select>
+      <button class="btn-sec" onclick="addCustom()">Agregar</button>
+    </div>
+  </div>
+  <div class="card">
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;">🧺 Mi despensa (<span id="despensa-count">0</span>) — anota cantidades</p>
+    <div id="despensa-list"></div>
+  </div>
+  <div class="seg">
+    <button id="seg-gym" class="seg-btn" onclick="setDia('gym')">🏋️ Día Gym</button>
+    <button id="seg-desc" class="seg-btn" onclick="setDia('desc')">😴 Descanso</button>
+  </div>
+  <button class="btn-main" onclick="generarDia()">🍳 Armar mis comidas de hoy</button>
+  <div id="menu-out" style="margin-top:14px;"></div>
+</div>
+
 <script>
 function show(id){
-  const map={compras:0,inventario:1,gym:2,descanso:3,lacteos:4};
+  const map={compras:0,inventario:1,gym:2,descanso:3,lacteos:4,cocina:5};
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('p-'+id).classList.add('active');
   document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
 }
+
+/* ============ MI COCINA ============ */
+const CATS={
+ proteina:{label:'🥩 Proteínas',items:['Huevo','Atún','Cerdo','Pollo','Res','Queso panela','Leche','Frijoles','Lentejas']},
+ carbo:{label:'🌾 Carbohidratos',items:['Arroz','Tortillas','Elote','Papa','Avena','Pasta','Galletas de animalito']},
+ verdura:{label:'🥦 Verduras',items:['Nopales','Chile poblano','Jitomate','Cebolla','Zanahoria','Pepino','Lechuga','Brócoli','Calabacita','Espinaca','Champiñones','Chayote']},
+ fruta:{label:'🍎 Frutas',items:['Plátano','Papaya','Piña','Manzana','Naranja','Melón','Sandía','Mango','Fresas','Guayaba']},
+ extra:{label:'🥑 Extras',items:['Aguacate','Crema','Limón','Ajo','Chile serrano','Cilantro']}
+};
+const SAZON={
+ 'Cerdo':'ajo + comino + orégano + pimienta, y jugo de limón o naranja 20 min antes. Para variar: adobo de chile guajillo licuado (casi 0 kcal).',
+ 'Pollo':'achiote + limón, o ajo + paprika + pimienta. Sécalo con servilleta antes de la plancha para que dore bien.',
+ 'Res':'sal gruesa + pimienta al final de la cocción, y un diente de ajo machacado. Cebolla asada al lado la eleva mucho.',
+ 'Huevo':'epazote o cilantro + cebolla + chile serrano picado. Una pizca de comino cambia el revuelto por completo.',
+ 'Atún':'limón + pimienta negra + Valentina o Tapatío. Cebolla morada picada y cilantro lo hacen sentir ceviche.',
+ 'Frijoles':'epazote al cocerlos + una pizca de comino. Un chile de árbol entero da aroma sin picor.',
+ 'Lentejas':'comino + hoja de laurel + ajo, con jitomate y cebolla sofritos.',
+ 'Arroz':'cuécelo con un diente de ajo y un trozo de cebolla, o ponle cúrcuma para color y sabor sin calorías.',
+ 'Papa':'orégano o romero + ajo en polvo, al horno. No necesita aceite extra.',
+ 'Nopales':'asados con limón y chile piquín o Tajín. El orégano les va muy bien.',
+ 'Verduras':'salteadas con ajo picado + limón + chile piquín, u orégano y pimienta.'
+};
+let despensa={};
+try{despensa=JSON.parse(localStorage.getItem('despensa')||'{}');}catch(e){despensa={};}
+let tipoDia=localStorage.getItem('tipoDia')||'gym';
+function catOf(n){for(const k in CATS)if(CATS[k].items.includes(n))return k;return 'extra';}
+if(!localStorage.getItem('despensa')){
+ ['Atún','Arroz','Nopales','Chile poblano','Jitomate','Zanahoria','Pepino','Lechuga','Elote','Plátano','Papaya','Piña','Limón'].forEach(n=>{despensa[n]={cat:catOf(n),qty:''};});
+}
+function saveD(){localStorage.setItem('despensa',JSON.stringify(despensa));}
+function renderChips(){
+ let h='';
+ for(const k in CATS){
+  h+='<div class="card"><p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">'+CATS[k].label+'</p><div>';
+  const extras=Object.keys(despensa).filter(n=>despensa[n].cat===k&&!CATS[k].items.includes(n));
+  CATS[k].items.concat(extras).forEach(n=>{
+   h+='<span class="chip'+(despensa[n]?' sel':'')+'" onclick="tog(\''+n+'\',\''+k+'\')">'+n+'</span>';
+  });
+  h+='</div></div>';
+ }
+ document.getElementById('cat-containers').innerHTML=h;
+ renderDespensa();
+}
+function tog(n,k){if(despensa[n])delete despensa[n];else despensa[n]={cat:k,qty:''};saveD();renderChips();}
+function renderDespensa(){
+ const names=Object.keys(despensa);
+ document.getElementById('despensa-count').textContent=names.length;
+ const el=document.getElementById('despensa-list');
+ if(!names.length){el.innerHTML='<p style="font-size:12px;color:#6b7280;font-style:italic;">Aún no marcas ingredientes — toca los botones de arriba.</p>';return;}
+ el.innerHTML=names.map(n=>'<div class="have-row" style="justify-content:space-between;gap:8px;"><span style="flex:1;">'+n+'</span><input class="qty-input" style="width:130px;" placeholder="ej. 500g, 3 pzas" value="'+(despensa[n].qty||'')+'" onchange="setQty(\''+n+'\',this.value)"></div>').join('');
+}
+function setQty(n,v){if(despensa[n]){despensa[n].qty=v;saveD();}}
+function addCustom(){
+ const inp=document.getElementById('cust-name');const n=inp.value.trim().replace(/['"<>\\]/g,'');
+ if(!n)return;
+ const name=n.charAt(0).toUpperCase()+n.slice(1).toLowerCase();
+ despensa[name]={cat:document.getElementById('cust-cat').value,qty:''};
+ saveD();inp.value='';renderChips();
+}
+function setDia(t){
+ tipoDia=t;localStorage.setItem('tipoDia',t);
+ document.getElementById('seg-gym').classList.toggle('active',t==='gym');
+ document.getElementById('seg-desc').classList.toggle('active',t==='desc');
+}
+function de(cat){return Object.keys(despensa).filter(n=>despensa[n].cat===cat);}
+function has(n){return !!despensa[n];}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function pick2(a){const b=[...a].sort(()=>Math.random()-.5);return b.slice(0,Math.min(2,b.length));}
+function qtyTag(n){return despensa[n]&&despensa[n].qty?' <span style="color:#6b7280;font-weight:400;font-size:11px;">(tienes: '+despensa[n].qty+')</span>':'';}
+function generarDia(){
+ const out=document.getElementById('menu-out');
+ const prots=de('proteina'),carbs=de('carbo'),vegs=de('verdura'),fruts=de('fruta');
+ if(!prots.length&&!carbs.length&&!vegs.length&&!fruts.length){
+  out.innerHTML='<div class="al">Marca primero los ingredientes que tienes en tu despensa ☝️</div>';return;
+ }
+ const alerts=[];
+ if(!prots.length)alerts.push('<div class="al"><strong>Sin proteína marcada:</strong> así no alcanzo tu meta de proteína del día. Lo más barato por gramo: huevo y atún.</div>');
+ if(!vegs.length)alerts.push('<div class="al"><strong>Sin verduras:</strong> agrega al menos una para volumen y fibra — nopales o lechuga cuestan casi nada.</div>');
+ const crudas=vegs.filter(v=>['Lechuga','Pepino','Zanahoria','Jitomate','Cebolla','Espinaca'].includes(v));
+ const guisar=vegs.filter(v=>!['Lechuga','Pepino'].includes(v));
+ const carnes=prots.filter(p=>!['Huevo','Queso panela','Leche','Atún','Frijoles','Lentejas'].includes(p));
+ const meals=[];
+ /* Desayuno */
+ (function(){
+  const items=[],saz=[];
+  if(has('Huevo')){
+   const vv=guisar.filter(v=>v!=='Elote');
+   items.push('<strong>3 huevos</strong>'+(vv.length?' revueltos con '+pick2(vv).join(' y ').toLowerCase():' revueltos')+qtyTag('Huevo'));
+   saz.push(SAZON['Huevo']);
+  }else if(has('Atún')){
+   items.push('<strong>1 lata de atún</strong> con jitomate y cebolla'+qtyTag('Atún'));saz.push(SAZON['Atún']);
+  }else if(prots.length){
+   items.push('<strong>'+prots[0]+'</strong> (~100g) a la plancha');
+  }
+  if(has('Leche'))items.push('<strong>1 taza de leche</strong> (240 ml)');
+  if(has('Queso panela'))items.push('<strong>30g queso panela</strong>');
+  if(fruts.length)items.push('<strong>150g de '+pick(fruts).toLowerCase()+'</strong>');
+  if(items.length)meals.push({ic:'🌅',n:'Desayuno',t:tipoDia==='gym'?'07:00 – 08:00':'08:00 – 09:00',items,saz});
+ })();
+ /* Snack AM */
+ (function(){
+  const items=[],saz=[];
+  if(has('Atún')&&has('Arroz')){
+   items.push('<strong>Bolitas de arroz:</strong> 1.5 latas de atún + 1 taza de arroz cocido'+qtyTag('Arroz'));
+   items.push('<strong>Aderezo:</strong> '+(has('Crema')?'poca crema + ':'')+'salsa picante'+(has('Limón')?' + limón':''));
+   saz.push(SAZON['Atún']);
+  }else if(has('Queso panela')&&fruts.length){
+   items.push('<strong>150g de '+pick(fruts).toLowerCase()+' + 40g queso panela</strong>');
+  }else if(has('Huevo')){
+   items.push('<strong>2 huevos cocidos</strong>'+(fruts.length?' + 1 fruta':''));
+  }else if(fruts.length){
+   items.push('<strong>1-2 piezas de fruta</strong>');
+  }
+  if(crudas.length)items.push('<strong>Ensalada:</strong> '+pick2(crudas).join(' + ').toLowerCase()+(has('Limón')?' con limón':''));
+  if(items.length)meals.push({ic:'🍙',n:'Snack AM',t:'10:30 – 11:00',items,saz});
+ })();
+ /* Comida */
+ let mainComida=null;
+ (function(){
+  const items=[],saz=[];
+  const mp=carnes.length?carnes:prots.filter(p=>p!=='Leche');
+  if(mp.length){
+   mainComida=pick(mp);
+   const porc={'Huevo':'3 huevos','Atún':'1.5 latas de atún','Queso panela':'80g queso panela','Frijoles':'1 taza de frijoles','Lentejas':'1 taza de lentejas'}[mainComida]||('180g de '+mainComida.toLowerCase());
+   items.push('<strong>'+porc+'</strong>'+(carnes.includes(mainComida)?' a la plancha':'')+qtyTag(mainComida));
+   saz.push(SAZON[mainComida]||'sal + pimienta + ajo y un toque de limón nunca fallan. Prueba también comino u orégano.');
+  }
+  const cbs=carbs.filter(c=>c!=='Galletas de animalito'&&c!=='Avena');
+  if(cbs.length){
+   const cb=pick(cbs);
+   const porcC={'Arroz':'½ – 1 taza de arroz cocido','Tortillas':'2 tortillas de maíz','Elote':'½ elote','Papa':'1 papa mediana al horno','Pasta':'¾ taza de pasta cocida'}[cb]||cb;
+   items.push('<strong>'+porcC+'</strong>'+qtyTag(cb));
+   if(SAZON[cb])saz.push(SAZON[cb]);
+  }
+  if(crudas.length)items.push('<strong>Ensalada:</strong> '+pick2(crudas).join(' + ').toLowerCase()+(has('Limón')?' + limón':'')+(has('Aguacate')?' + ¼ de aguacate':''));
+  if(has('Queso panela')&&mainComida!=='Queso panela')items.push('<strong>30g queso panela</strong>');
+  if(items.length)meals.push({ic:'🍛',n:'Comida',t:'14:00 – 15:00',items,saz});
+ })();
+ /* Pre/Post entreno o Merienda */
+ if(tipoDia==='gym'){
+  (function(){
+   const items=[];
+   if(has('Atún'))items.push('<strong>1 lata de atún</strong> escurrido');
+   else if(has('Huevo'))items.push('<strong>1 huevo + 2 claras</strong> (poca grasa)');
+   if(has('Arroz'))items.push('<strong>1 taza de arroz cocido</strong>');
+   else if(has('Avena'))items.push('<strong>⅓ taza de avena</strong> con agua o leche');
+   else if(has('Tortillas'))items.push('<strong>2 tortillas</strong> con la proteína');
+   if(has('Plátano'))items.push('<strong>1 plátano mediano</strong>');
+   else if(fruts.length)items.push('<strong>1 fruta</strong> ('+pick(fruts).toLowerCase()+')');
+   if(items.length)meals.push({ic:'💜',n:'Pre-entreno',t:'90 min antes del gym',items,saz:[],nota:'⚠️ Poca grasa aquí — digiere rápido y no pesa en el entreno.'});
+  })();
+  (function(){
+   const items=[];
+   if(has('Galletas de animalito'))items.push('<strong>20-25 galletas de animalito</strong> al salir del gym');
+   if(has('Leche'))items.push('<strong>1 taza de leche</strong> llegando a casa');
+   if(has('Plátano'))items.push('<strong>1 plátano</strong>');
+   else if(fruts.length)items.push('<strong>150g de '+pick(fruts).toLowerCase()+'</strong>');
+   if(!items.length)items.push('<strong>Carbo rápido + proteína:</strong> lo que tengas a la mano — fruta + huevo cocido funciona');
+   meals.push({ic:'💚',n:'Post-entreno',t:'antes de 45 min',items,saz:[],nota:'💡 Carbo rápido + proteína = recuperación.'});
+  })();
+ }else{
+  (function(){
+   const items=[];
+   if(has('Huevo'))items.push('<strong>2 huevos cocidos</strong>');
+   if(has('Queso panela'))items.push('<strong>30g queso panela</strong>');
+   if(fruts.length)items.push('<strong>150g de '+pick(fruts).toLowerCase()+'</strong>');
+   if(items.length)meals.push({ic:'🍎',n:'Merienda',t:'17:00',items,saz:[]});
+  })();
+ }
+ /* Cena */
+ (function(){
+  const items=[],saz=[];
+  const cp=prots.filter(p=>p!==mainComida&&p!=='Leche');
+  const cenaP=cp.length?pick(cp):mainComida;
+  if(cenaP){
+   const porc={'Huevo':'2 huevos','Atún':'1 lata de atún','Queso panela':'60g queso panela','Frijoles':'¾ taza de frijoles','Lentejas':'¾ taza de lentejas'}[cenaP]||('120g de '+cenaP.toLowerCase());
+   items.push('<strong>'+porc+'</strong>'+qtyTag(cenaP));
+   if(SAZON[cenaP])saz.push(SAZON[cenaP]);
+  }
+  if(has('Chile poblano')&&has('Cebolla')){
+   items.push('<strong>Rajas de poblano con cebolla</strong> salteadas');
+   saz.push('las rajas con una pizca de orégano y pimienta no necesitan crema.');
+  }else if(has('Nopales')){
+   items.push('<strong>Nopales asados</strong>');saz.push(SAZON['Nopales']);
+  }else if(guisar.length){
+   items.push('<strong>'+pick(guisar)+'</strong> salteado con ajo y cebolla');saz.push(SAZON['Verduras']);
+  }
+  if(crudas.length)items.push('<strong>Ensalada</strong>'+(has('Limón')?' con limón':''));
+  if(items.length)meals.push({ic:'🌙',n:'Cena',t:tipoDia==='gym'?'21:00 – 21:30':'20:00 – 21:00',items,saz,nota:'💡 Cena ligera en carbos — la proteína y verdura sacian sin frenar el déficit.'});
+ })();
+ /* Render */
+ let h=alerts.join('');
+ h+='<div class="hl" style="margin-bottom:12px;">Menú de hoy — '+(tipoDia==='gym'?'🏋️ día de gym (~2,000-2,100 kcal)':'😴 día de descanso (~1,850-1,950 kcal)')+'</div>';
+ meals.forEach(m=>{
+  h+='<div class="card"><div class="meal-hdr"><span class="meal-name">'+m.ic+' '+m.n+'</span><span class="meal-time">'+m.t+'</span></div><ul class="food-list">'+m.items.map(i=>'<li>'+i+'</li>').join('')+'</ul>';
+  const s=(m.saz||[]).filter(Boolean);
+  if(s.length)h+='<div class="sazon">🌶️ <strong>Sazón:</strong> '+s.join(' — ')+'</div>';
+  if(m.nota)h+='<p class="note">'+m.nota+'</p>';
+  h+='</div>';
+ });
+ h+='<div class="hl">🌶️ <strong>Recuerda:</strong> especias, chile, ajo, limón y hierbas aportan prácticamente 0 calorías — úsalas sin miedo. El sabor es lo que hace la dieta sostenible.</div>';
+ h+='<button class="btn-main" style="background:#185FA5;" onclick="generarDia()">🔄 Dame otra combinación</button>';
+ out.innerHTML=h;
+ out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+renderChips();
+setDia(tipoDia);
+saveD();
 </script>
 </body>
 </html>
