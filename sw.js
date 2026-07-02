@@ -1,10 +1,14 @@
-const CACHE_NAME = 'emboobate-cache-v17';
+const CACHE_NAME = 'emboobate-cache-v18';
 const ASSETS = [
   './embobate.html',
   './manifest.json',
   './logo.png',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './dieta.html',
+  './dieta-manifest.json',
+  './dieta-icon-192.png',
+  './dieta-icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

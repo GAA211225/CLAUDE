@@ -1,0 +1,31 @@
+{
+  "name": "Mi Dieta $350",
+  "short_name": "Dieta",
+  "description": "Plan de dieta semanal con presupuesto de $350 MXN y armador de comidas",
+  "id": "./dieta.html",
+  "start_url": "./dieta.html",
+  "scope": "./dieta.html",
+  "display": "standalone",
+  "background_color": "#f8f9fc",
+  "theme_color": "#1D9E75",
+  "icons": [
+    {
+      "src": "dieta-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "dieta-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "dieta-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
